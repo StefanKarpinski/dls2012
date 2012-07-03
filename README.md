@@ -12,5 +12,6 @@ Submission
 https://www.easychair.org/account/signin.cgi?conf=dls12
 
 ACM template
-http://drupal.sigplan.org/Resources/Author
-http://drupal.sigplan.org/sites/default/files/sigplanconf-guide.pdf
+Latex classes: http://drupal.sigplan.org/Resources/Author
+Guide: http://drupal.sigplan.org/sites/default/files/sigplanconf-guide.pdf
+Classification system: http://www.acm.org/about/class/1998/
