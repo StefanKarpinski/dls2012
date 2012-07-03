@@ -1,4 +1,6 @@
-\documentclass{sigplanconf}
+\documentclass[11pt]{sigplanconf}
+
+% VBS: Change back to 9pt for paper submission. 12 pages max.
 
 % The following \documentclass options may be useful:
 %
@@ -36,7 +38,17 @@
 \maketitle
 
 \begin{abstract}
-This is the text of the abstract.
+  Dynamic programming languages have become popular for scientific
+  computing. They are generally considered highly productive, but
+  lacking in performance. This paper presents Julia, a new dynamic
+  language for technical computing, designed for performance from the
+  beginning by adapting and extending modern programming language
+  techniques. A design based on generic functions and a rich type
+  system simultaneously enables an expressive programming model and
+  successful type inference, leading to good performance for a wide
+  range of programs. This makes it possible for much of Julia's
+  library to be written in Julia itself, while also incorporating
+  best-of-breed C and Fortran libraries.
 \end{abstract}
 
 \category{D.3.2}{Programming Languages}{Very high-level languages}
@@ -49,7 +61,167 @@ Programming Language for Technical Computing
 
 \section{Introduction}
 
-The text of the paper begins here.
+Convenience is winning. Despite continued advances in compiler technology
+and execution frameworks for high-performance computing, programmers
+routinely use high-level dynamic languages for algorithm
+development in applied math and the sciences. These systems
+(prominent examples include Python \cite{numpy}, R \cite{Rlang},
+MATLAB\textregistered, Octave \cite{Octave}, and SciLab \cite{scilab})
+have greatly increased
+productivity, but are known to lack performance for many demanding applications.
+The result is a two-tiered software world, where
+C and FORTRAN are used for key libraries and production code, while
+high-level languages are used for interaction and scripting overall workflow.
+In this thesis I argue that a new approach to dynamic language design can
+change this situation, providing productivity and performance at once. We
+should embrace the emerging preference for ``scripting'' style languages,
+and ask how these systems can better provide for the future of technical
+computing.
+
+The ``two-tier'' architecture, for example writing an application in
+Python with performance-critical code written in C, seems like a good way
+to balance performance and productivity, but there are many reasons
+to move away from it.
+Naturally, it would be preferable to write compute-intensive code in a
+more productive language as well, especially when developing parallel
+algorithms, where code complexity can increase dramatically.
+Programming in two languages can also be more complex
+than using either language by itself, due to interfacing issues such as
+converting between type domains and handling memory reclamation.
+These interfacing
+issues may also add overhead when calling between layers. When such a
+system is used for mathematical programming there is pressure to write
+``vectorized'' code, which is not natural for every problem. Lastly, from
+a compiler's point of view, these designs make it difficult to perform
+whole-program optimization. It is difficult to perform domain-specific
+optimizations of C code, and expressing algorithms at a higher level
+makes certain optimizations easier.
+
+Fortunately, there has been significant progress in improving the
+performance of dynamic languages. Projects like the Python compiler
+framework PyPy \cite{pypyjit} have been fairly successful. Similar efforts
+exist for languages from LISP onward. The common feature of all
+such projects is that they seek to add performance to an existing
+language. This is obviously useful, but we are somewhat surprised to find
+it has not led to the desired situation outlined above. Julia is designed
+for performance from the beginning, and we feel this
+seemingly-subtle difference turns out to be crucial.
+
+%In our design, the compiler machinery that provides performance
+%is also available for extra expressivity in programs.
+
+``Built-in'' performance means that the compiler's type machinery is also
+available within the language, adding expressiveness. This, in turn,
+allows more functionality to be implemented in
+libraries. Many of the key differences between languages used by different
+disciplines (e.g. R for statistics) could be expressed in libraries, but
+are instead either part of the language core, or implemented in C where
+they are more difficult to modify or extend. When optimizers for these
+languages are developed, knowledge of key library functions often must be
+encoded into the compiler. Even Common LISP, for which there are several
+highly-optimizing compilers, specifies arithmetic in the language, and
+yet users do not all agree on how arithmetic should behave. Some
+users require specialized types such as fixed-point numbers or intervals,
+or support for ``missing data'' values as in R.
+
+Julia has the potential to solve this problem by providing infrastructure
+that can be shared across domains, without sacrificing the ease and
+immediacy of current popular systems.
+We take advantage of, and validate, this infrastructure by writing Julia's
+standard library in the language itself, which (1) makes the code more
+generic and increases our productivity, (2) allows inlining library
+code into user code and vice-versa, and (3) enables direct type analysis
+of the library instead of requiring knowledge of library functions to
+be built in to the compiler. New users are able to read the standard
+library code, and modify it or imitate it for their own purposes.
+%Ultimately, performance is about flexibility, not just getting answers
+%faster.
+
+%% Ultimately, performance is about more than getting
+%% an answer faster; it is about expressivity and flexibility. Our core
+%% strategy for achieving this is to employ a sophisticated type system that can
+%% nevertheless be ignored by users who aren't interested in it. The type
+%% system becomes, in a sense, an optional tool for library writers.
+
+%% often languages start with a performance or parallelization goal and work
+%% from there. we start from the opposite direction, designing for maximum
+%% flexibility and ease-of-use, and betting that this power can be leveraged to
+%% meet increasingly ambitious performance goals. One area where a flexible
+%% high-level language can potentially help performance is custom code
+%% generation. Often hand-written C code is impractical or insufficient for
+%% obtaining the highest performance. Julia's type inference and JIT compiler
+%% make it easier to generate efficient code at a more abstract, symbolic level.
+
+Many of the ideas explored here are not exclusively applicable to technical
+computing, but we have chosen to target that application area for several
+reasons. First, technical computing has unique concerns that can be
+especially awkward or inefficient to handle in existing dynamic languages.
+Examples include the need for a wide variety of numeric types, and the need for
+efficient arrays of those types. Second, the performance
+of high-level technical computing languages has begun to seriously lag behind
+that of more mainstream languages (notably JavaScript), creating a present
+need for attempts to improve the situation.
+General-purpose languages like Java or perhaps even JavaScript could
+be used for technical computing, but we feel the community will continue to
+prefer environments that cater to its syntactic needs, and are able to
+prioritize issues of numerical accuracy and performance.
+
+%% my parallelism principles:
+%% 1. People won't use a language *just* to get parallelism. They will
+%% live with their favorite language's parallel extensions (ipython,
+%% cilk, PCT, etc.)
+%% 2. Making parallelism implicit in evaluation semantics is not the way
+%% to get effective parallelism. I think I heard Arvind say they tried it
+%% with parallel Haskell for 10 years, and it didn't work.
+%% 3. If a language isn't as easy as matlab or R, people will keep using
+%% matlab or R.
+
+\section{The Essence of Julia}
+
+Julia's primary means of abstraction is dynamic multiple dispatch.
+Much of a language consists of mechanisms for selecting
+code to run in different situations --- from method selection to
+instruction selection. We use only dynamic multiple dispatch for this
+purpose, which is possible through sufficiently expressive
+dispatch rules. To add usability to this flexibility,
+types can generally be ignored when not used to specify dispatch behavior.
+
+Types may optionally be used to make declarations, which are considered by
+the compiler and checked at run time when necessary. However, we do not
+require declarations for performance. To achieve this, Julia's compiler
+automatically specializes methods for types encountered at run time
+(or at compile time, to the extent types are known then). Effectively,
+every method is a template (in the C++ sense) by default, with
+parameterization and instantiation directed by the compiler. We feel this
+design is in line with a general trend towards automation in compiler
+and language design.
+
+%designing for type inference gives us two things
+%- can design library with conscious tradeoffs
+%- avoid premature optimization
+
+\section{Language Design}
+
+\subsection{Types}
+\subsection{Generic functions}
+\subsection{Intrinsic functions}
+\subsection{Design limitations}
+
+\section{Language implementation}
+\subsection{Method dispatch}
+\subsection{Type inference}
+\subsection{Lattice operations}
+\subsection{Code generation and optimization}
+
+\section{Standard library}
+
+\section{Performance}
+
+\section{Ecosystem}
+
+
+% -------------------------------------------------------------
+
 
 %\appendix
 %\section{Appendix Title}
