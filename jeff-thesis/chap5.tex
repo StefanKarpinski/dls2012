@@ -1,0 +1,211 @@
+\chapter{Evaluation}
+
+\section{Performance}
+
+We have compared the execution speed of Julia code to that of six other
+languages: C++, Python, MATLAB\textregistered, Octave, R, and JavaScript.
+Figure~\ref{mbr}
+\footnote{
+These measurements were done by Stefan Karpinski on a
+MacBook Pro with a 2.53GHz Intel Core 2 Duo CPU and 8GB of 1066MHz DDR3 RAM.
+
+Python 2.7.1, MATLAB\textregistered R2011a, Octave 3.4, R 2.14.2, V8 3.6.6.11
+C++ compiled by GCC 4.2.1, taking best timing from all optimization levels (-O0 through -O3).
+
+The Python implementations of rand\_mat\_stat and rand\_mat\_mul use NumPy (v1.5.1) functions; the rest are pure Python implementations.
+}
+shows timings for five scalar microbenchmarks, and two
+simple array benchmarks. All numbers are ratios relative to
+the time taken by C++. The first five tests do not
+reflect typical application performance in each environment; their only
+purpose is to compare the code executed for basic language
+constructs manipulating scalar quantities and referencing individual
+array elements.
+
+\begin{singlespace}
+\begin{figure}
+\caption{Microbenchmark results (times relative to C++)}
+\label{mbr}
+\begin{center}
+\begin{tabular}{|l|r|r|r|r|r|r|}\hline
+test & Julia & Python & MATLAB\textregistered & Octave & R & JavaScript \\
+\hline \hline
+fib        & 1.97 & 31.47 & 1336.37  & 2383.80 & 225.23 & 1.55 \\
+\hline
+parse\_int & 1.44 & 16.50 &  815.19  & 6454.50 & 337.52 & 2.17 \\
+\hline
+quicksort  & 1.49 & 55.84 &  132.71  & 3127.50 & 713.77 & 4.11 \\
+\hline
+mandel     & 5.55 & 31.15 &   65.44  &  824.68 & 156.68 & 5.67 \\
+\hline
+pi\_sum    & 0.74 & 18.03 &    1.08  &  328.33 & 164.69 & 0.75 \\
+\hline
+rand\_mat\_stat & 3.37 & 39.34 & 11.64 & 54.54 &  22.07 & 8.12 \\
+\hline
+rand\_mat\_mul  & 1.00 &  1.18 &  0.70 &  1.65 &   8.64 & 41.79 \\
+\hline
+\end{tabular}
+\end{center}
+\end{figure}
+\end{singlespace}
+
+We can see why the standard libraries of these environments are
+developed in C and FORTRAN. MATLAB\textregistered has a JIT compiler
+that works quite well in some cases, but is inconsistent, and
+performs especially poorly on user-level function calls. The V8
+JavaScript JIT compiler's performance is impressive. Anomalously, both
+Julia and JavaScript seem to beat C++ on pi\_sum, but we have not yet
+discovered why this might be.
+
+The rand\_mat\_stat code manipulates many 5-by-5 matrices. Here the
+performance gaps close, but the arrays are not large enough for
+library time to dominate, so Julia's ability to specialize call sites
+wins the day (despite the fact that most of the array library functions
+involved are written in Julia itself).
+
+The rand\_mat\_mul code demonstrates a case where time spent in BLAS \cite{blas}
+dominates. MATLAB\textregistered gets its edge from using a
+multi-threaded BLAS (threading is available in the BLAS Julia uses,
+but it was disabled when these numbers were taken). R may not be using
+a well-tuned BLAS in this install; more efficient configurations are
+probably possible.
+JavaScript as typically deployed is not able to call the native BLAS code,
+but the V8 compiler's work is respectable here.
+
+
+Figure~\ref{tlbr}
+\footnote{
+Linux kernel 3.2.8 PC with 3.2GHz Intel Core i5 CPU, 4GB of RAM.
+Python 2.7.2.
+}
+compares Julia and Python on some
+more realistic ``task level'' benchmarks. The first test defines two
+data types (classes in Python), then forms (by appending) a heterogeneous
+array containing one million instances of each type. Then a method is called
+on each object in the array. On the first run, Julia incurs some compilation
+overhead and is about 8x faster. On future runs it is up to 16x faster.
+Although the method calls cannot be optimized, Julia is still able to
+gain an advantage likely due to use of native arithmetic for looping.
+
+\begin{singlespace}
+\begin{figure}
+\caption{Task-level benchmark results (times in seconds)}
+\label{tlbr}
+\begin{center}
+\begin{tabular}{|l|r|r|r|r|}\hline
+test              & Python run 1 & Python fastest & Julia run 1 & Julia fastest\\
+\hline \hline
+list and dispatch & 3.60         & 3.12           & 0.43        & 0.19 \\
+\hline
+CSV parse         & 0.06         & 0.06           & 0.49        & 0.17 \\
+\hline
+\end{tabular}
+\end{center}
+\end{figure}
+\end{singlespace}
+
+The second test reads each line of a 100000-line, 7MB CSV file, and
+identifies and separates the comma-delimited fields. Python uses mature
+C libraries for these tasks, and so is 3x to 8x faster than Julia. All of
+the Julia library code is written in Julia, but this of course is no help
+to an end user who only cares about application performance.
+
+Julia is not yet able to cache generated native code, and so incurs a
+startup time of about two seconds to compile basic library functions.
+For some applications this latency is a barrier to deployment, and we plan
+to address it in the future.
+
+
+\section{Effectiveness of Specialization Heuristics}
+
+Given our implementation strategy, excessive compilation and corresponding
+memory use are potential performance concerns. In Figure~\ref{ncomp}
+we present the number of method compilations performed on startup, and
+after running a test suite. From the second row of the table to the bottom,
+each of three specialization heuristics is successively enabled to
+determine its effect on compiler workload. In the last table row, each
+method is compiled just once.
+
+The heuristics are able to elide about 12\% of compilations. This is
+not a large fraction, but it is satisfying given that the heuristics can
+be computed easily, and only by manipulating types. On average, each
+method is compiled about 2.5 times.
+
+\begin{singlespace}
+\begin{figure}
+\caption{Number of methods compiled}
+\label{ncomp}
+\begin{center}
+\begin{tabular}{|l|r|r|}\hline
+    & at startup & after test suite \\
+\hline \hline
+no heuristics & 396 & 2245 \\
+\hline
+manual hints & 379 & 2160 \\
+\hline
+tuple widening & 357 & 1996 \\
+\hline
+vararg widening & 355 & 1970 \\
+\hline
+no specialization & 267 & 766 \\
+\hline
+\end{tabular}
+\end{center}
+\end{figure}
+\end{singlespace}
+
+Memory usage is not unreasonable for modern machines: on a 64-bit platform
+Julia uses about 50MB of memory on startup, and after loading several
+libraries and working for a while memory use tends to level off around
+150-200MB. Pointer-heavy data structures consume a lot of space on
+64-bit platforms. To mitigate this problem, we store ASTs and type
+information in a compact serialized format, and deserialize structures
+when the compiler needs them.
+
+
+\section{Effectiveness of Type Inference}
+
+It is interesting to count compiled expressions for which
+a concrete type can be inferred. In some sense, this tells us ``how close''
+Julia is to being statically typed, though in our case this is a property
+of both the language implementation and the standard library.
+In a run of our test suite, code was generated for 135375 expressions.
+Of those, 84127 (62\%) had a type more specific than {\tt Any}. Of those,
+80874 (96\%) had a concrete static type.
+
+This suggests that use of dynamic typing is fairly popular, even though
+we try to avoid it to some extent in the standard library. Still, more
+than half of our code is well-typed. The numbers also suggest that,
+despite careful use of a rich lattice, typing tends to be an all-or-nothing
+affair. But, it is difficult to estimate the effect of the 4\%
+abstractly-typed expressions on the other 96\%, not to mention the potential
+utility of abstract inferred types in code that was not actually
+compiled.
+
+These numbers are somewhat inaccurate, as they include dead code, and
+it may be the case that better-typed methods tend to be recompiled either
+more or less often, biasing the numbers.
+
+
+\section{Productivity}
+
+Our implementation of Julia consists of 11000 lines of C, 4000 lines of C++,
+and 3500 lines of Scheme (here we are not counting code in external
+libraries such as BLAS and LAPACK).
+Thus we have significantly less low-level code to maintain than most scripting
+languages. 
+Our standard library is roughly 25000 lines of Julia code.
+The standard library provides around 300 numerical functions
+of the sort found in all technical computing environments (arithmetic
+operators, reductions, sorting, etc.). We suspect that our library is
+one of the most compact implementations of this body of functionality.
+
+At this time, every contributor except the core developers is a ``new user''
+of Julia, having known of the language for no more than three months.
+Despite this, our function library has received several significant
+community contributions, and numerous smaller ones. We take this as
+encouraging evidence that Julia is productive and easy to learn.
+
+%~12000 lines extras
+%~3000 lines examples
+%~4000 lines of test code

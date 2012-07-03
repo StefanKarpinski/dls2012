@@ -1,0 +1,325 @@
+\chapter{Example Use Cases}
+
+%By design, it is possible to write many programs in Julia that are
+%entirely unsurprising to users of current systems such as Python, R, and
+%MATLAB\textregistered. Therefore, in this chapter we focus instead on
+%more novel uses enabled by Julia's types and dispatch mechanism.
+
+% these examples focus on unique features of julia. much julia code is
+% written without using this sort of functionality, and looks quite similar
+% to code in current systems.
+
+\section{Numeric Type Promotion}
+
+Numeric types and arithmetic are fundamental to all programming, but deserve
+extra attention in the case of scientific computing.
+In traditional compiled languages such as C, the arithmetic operators are the
+most polymorphic ``functions'', and hence cannot be written in the language
+itself. Arithmetic must be defined in the compiler, including contentious
+decisions such as how to handle operations with mixed argument types.
+
+In Julia, multiple dispatch is used to define arithmetic and type
+promotion behaviors at the library level rather than in the compiler.
+As a result, the system smoothly incorporates new
+operators and numeric types with minimal work.
+
+Four key utility functions comprise the type promotion system.
+For simplicity, we consider only two-argument forms of promotion
+although multi-argument promotion is also defined and used.
+
+\begin{enumerate}
+\item {\tt convert(T, value)} converts its second argument to type {\tt T}
+\item {\tt promote\_rule(T1,T2) } defines which of two types is greater in
+the promotion partial order
+\item {\tt promote\_type(T1,T2) } uses {\tt promote\_rule} to determine which
+type should be used for values of types {\tt T1} and {\tt T2}
+\item {\tt promote(v1, v2) } converts its arguments to an appropriate type
+and returns the results
+\end{enumerate}
+
+{\tt promote} is implemented as follows:
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+function promote{T,S}(x::T, y::S)
+    (convert(promote_type(T,S),x), convert(promote_type(T,S),y))
+end
+\end{verbatim}
+\end{singlespace}
+
+{\tt promote\_type} simply tries {\tt promote\_rule} with its arguments in
+both orders, to avoid the need for repeated definitions:
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+function promote_type{T,S}(::Type{T}, ::Type{S})
+    if applicable(promote_rule, T, S)
+        return promote_rule(T,S)
+    elseif applicable(promote_rule, S, T)
+        return promote_rule(S,T)
+    else
+        error("no promotion exists for ",T," and ",S)
+    end
+end
+\end{verbatim}
+\end{singlespace}
+
+{\tt convert} and {\tt promote\_rule} are implemented for each type. Two
+such definitions for the {\tt Complex128} type are:
+
+\begin{verbatim}
+promote_rule(::Type{Complex128}, ::Type{Float64}) = Complex128
+convert(::Type{Complex128}, x::Real) = complex128(x, 0)
+\end{verbatim}
+
+With these definitions in place, a function may gain generic promotion
+behavior by adding the following kind of definition:
+
+\begin{verbatim}
++(x::Number, y::Number) = +(promote(x,y)...)
+\end{verbatim}
+
+This means that, given two numeric arguments where no more specific
+definition matches, promote the arguments and retry the operation
+(the {\tt ...} ``splices'' the two values returned by {\tt promote} into
+the argument list).
+The standard library contains such definitions for all basic arithmetic
+operators.
+For this recursion to terminate, we require only that each {\tt Number}
+type implement {\tt +} for two arguments of that type, e.g.
+
+\begin{verbatim}
++(x::Int64, y::Int64) = ...
++(x::Float64, y::Float64) = ...
++(x::Complex128, y::Complex128) = ...
+\end{verbatim}
+
+Therefore, each new type requires only one definition of each operator,
+and a handful of {\tt convert} and {\tt promote\_rule} definitions.
+If $n$ is the number of types and $m$ is the number of operators, a new
+type requires $O(n+m)$ rather than $O(n\cdot m)$ definitions.
+
+The reader will notice that uses of this mechanism involve multiple method
+calls, as well as potentially expensive features such as tuple allocation
+and argument splicing. Without a sufficient optimizing compiler, this
+implementation would be completely impractical. Fortunately, through
+type analysis, inlining, elision of unnecessary tuples, and lowering of
+the {\tt apply} operation implied by {\tt ...}, Julia's compiler is able
+to eliminate all of the overhead in most cases, ultimately yielding a
+sequence of machine instructions comparable to that emitted by a
+traditional compiler.
+
+The most troublesome function is {\tt promote\_type}. For good performance,
+we must elide calls to it, but doing so may be incorrect since the function
+might throw an error. By fortunate coincidence though, the logic in
+{\tt promote\_type} exactly mirrors the analysis done by type inference: it
+only throws an error if no matching methods exist for its calls to
+{\tt promote\_rule}, in which case type inference concludes that the
+function throws an error regardless of which branch is taken.
+{\tt applicable} is a built-in function known to be free of effects.
+Therefore, whenever a sharp result type for {\tt promote\_type} can be
+inferred, it is also valid to remove the unused arms of the conditional.
+
+
+\section{Code Generation and Staged Functions}
+
+The presence of types and an inference pass creates a new, intermediate
+translation stage which may be customized (macros essentially customize
+syntax processing, and object systems customize run time behavior).
+This is the stage at which types are known, and it exists in Julia via
+the compiler's method specialization machinery. Specialization may occur
+at run time during dispatch, or at compile time when inference is able
+to determine argument types accurately.
+Running custom code at this stage has two tremendous effects:
+first, optimized code can be generated for special cases, and
+second, the type inference system can effectively be extended to be able to
+make new type deductions relevant to the user's application.
+
+For example, we might want to write functions that apply to two
+arrays of different dimensionality, where the result has the higher of the
+two argument dimensionalities. One such function is a ``broadcasting''
+binary elementwise operator, that performs computations such as adding a
+column vector to every column of a matrix, or adding a plane to every slice
+of a 3-dimensional dataset. We can determine the shape of the result
+array with the following function:
+
+\vspace{-0.25in}
+\begin{singlespace}
+\begin{verbatim}
+function promote_shape(s1::Tuple, s2::Tuple)
+    if length(s1) > length(s2)
+        return s1
+    else
+        return s2
+    end
+end
+\end{verbatim}
+\end{singlespace}
+
+The type system can easily express the types of array shapes, for example
+{\tt (Int,Int)} and {\tt (Int,Int,Int)}. However, inferring a sharp result
+type for this simple function is still challenging. The inference algorithm
+would have to possess a theory of the {\tt length} and {\tt >} functions,
+which is not easily done given that all Julia functions may be redefined
+and overloaded with arbitrary methods.
+
+One solution might be to allow the user to write some kind of compiler
+extension or declaration. This approach is not ideal, since it might
+result in duplicated information, or require the user to know more than
+they want to about the type system.
+
+Instead, this function can be written as a \emph{staged function} (or
+more accurately in our case, a \emph{staged method}). This is a function
+that runs at an earlier translation ``stage'', i.e. compile time, and
+instead of returning a result value returns code that will compute the
+result value when executed \cite{staging}.
+Here is the staged version of
+{\tt promote\_shape}\footnote{The {\tt @} denotes a macro invocation. At
+present, staged methods are implemented by a macro, but full integration
+into the language is planned.}:
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+@staged function promote_shape(s1::Tuple, s2::Tuple)
+    if length(s1) > length(s2)
+        quote return s1 end
+    else
+        quote return s2 end
+    end
+end
+\end{verbatim}
+\end{singlespace}
+
+The signature of this definition behaves exactly like any other method
+signature: the type annotations denote run-time types for which the
+definition is applicable. However, the body of the method will be invoked
+on the \emph{types} of the arguments rather than actual arguments, and the
+result of the body will be used to generate a new, more specialized
+definition. For example, given arguments of types
+{\tt (Int,Int)} and {\tt (Int,Int,Int)} the generated definition would be:
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+function promote_shape(s1::(Int,Int), s2::(Int,Int,Int))
+    return s2
+end
+\end{verbatim}
+\end{singlespace}
+
+Observe that the type of this function is trivial to infer.
+
+The staged function body runs as normal user code, so whatever definition
+of {\tt >} is visible will be used, and the compiler does not have to know
+how it behaves. Critically, the staged version of the function looks
+similar to the normal version, requiring only the insertion of {\tt quote}
+to mark expressions deferred to the next stage.
+
+In the case where a program is already statically-typeable, staged
+functions preserve that property. The types of the arguments to the
+staged function will be known at compile time, so the custom code
+generator can be invoked at compile time. Then the compiler may inline
+the result or emit a direct call to the generated code, as usual.
+
+Or, if the user does not require static compilation, the custom code
+generator can be invoked at run time. Its results are cached for each new
+combination of argument types, so compilation pauses are infrequent.
+
+Thus we have a language with the convenience of run-time-only semantics,
+which can be compiled just-in-time or ahead-of-time\footnote{The ahead-of-time
+compiler is not yet implemented.} with minimal performance differences,
+including custom code generation without the need for run-time {\tt eval}.
+Most importantly, functions with complex type behavior can be implemented
+in libraries without losing performance. Of course, ordinary Julia
+functions may also have complex type behavior, and it is up to the
+library designer to decide which functions should be staged.
+
+
+\section{Generic Programming}
+
+Support for generic programming is one of Julia's strengths.
+Code in dynamic languages is often thought of as generic by default, due
+to the absence of type restrictions, but this has its limits. First, many
+systems, such as Common LISP, support optional type declarations to
+improve performance. However, when this feature is used code usually
+becomes monomorphic as a result. Second, some cases of generic
+programming require the ability to specify behaviors that \emph{vary}
+based on types, for example initializing a variable with the right kind
+of container, or with an appropriate value for different numeric types.
+
+Julia has neither of these problems. The first is solved both by
+automatic specialization (which usually eliminates the need for
+performance-seeking declarations), and static parameters, which allow
+declarations containing type variables. The second is solved by the
+ability to define type traits. Multiple dispatch is also helpful, as it
+provides many ways to extend functions in the future.
+
+As an example, here is how {\tt max} can be written for any array:
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+function max{T<:Real}(A::AbstractArray{T})
+    v = typemin(T)
+    for x in A
+        if x > v
+            v = x
+        end
+    end
+    return v
+end
+\end{verbatim}
+\end{singlespace}
+
+At the same time, we could provide an alternate implementation that makes
+even fewer assumptions:
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+function max(A)
+    v = typemin(eltype(A))
+    ...
+end
+\end{verbatim}
+\end{singlespace}
+
+This allows any container to expose its element type by implementing
+{\tt eltype}. Here we do not have to know how the element type is
+determined. In fact, this version would work for arrays equally well
+as the first implementation, but we skip the opportunity to specify
+that it is only defined for arrays with {\tt Real} elements.
+We might also choose to call {\tt typemin} only if the container is
+empty, and otherwise initialize {\tt v} with the first element. Then
+{\tt max} would work on containers that do not implement {\tt eltype},
+as long as they are never empty.
+
+Flexible ad-hoc polymorphism plays a significant role in Julia's overall
+performance. In scientific computing especially, important special cases
+exist among the myriad datatypes that might appear in a program. Our
+dispatch model permits writing definitions for more specialized cases
+than most object-oriented languages.
+
+For example, we have {\tt Array}, the type of dense arrays, and
+{\tt SubArray}, an abstract array that references a contiguous section of
+another array. The BLAS and LAPACK libraries allow the caller to specify
+dimension strides, and we would like to call them for any arrays they
+can handle. To do this, we can define the following types:
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+typealias Matrix{T}                  Array{T,2}
+typealias StridedMatrix{T,A<:Array}  Union(Matrix{T}, SubArray{T,2,A})
+\end{verbatim}
+\end{singlespace}
+
+Then we can write definitions such as
+{\tt *(StridedMatrix\{T\},StridedMatrix\{T\})} for appropriate element types
+{\tt T}. This replaces the custom dispatch schemes often implemented in
+array programming systems.
+
+% todo more?

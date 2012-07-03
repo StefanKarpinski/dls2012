@@ -1,0 +1,560 @@
+\chapter{Language Design}
+
+Static typing appears to have many advantages from an objective, theoretical
+standpoint: earlier error detection, generally better performance, and
+support for more accurate tools are often cited in this context.
+Nevertheless, developers are ``voting with their code'' for languages that
+lack strong static typing disciplines. This is the phenomenon that Julia's
+design addresses, and as such we must present our view of the advantages of
+dynamic languages. In particular, we do not assume that \emph{every}
+feature of these languages is equally important.
+We hypothesize that the following forms of ``dynamism'' are
+the most useful:
+
+\begin{itemize}
+\item The ability to run code at load time and compile time, eliminating
+some of the distractions of build systems and configuration files.
+\item A universal {\tt Any} type as the only true static type,
+allowing the issue of static types to be ignored when desired.
+\item Never rejecting code that is syntactically well-formed.
+\item Behavior that depends only on run-time types (unlike, for example, C++,
+where virtual methods are dispatched by run-time type and function overloads
+are dispatched by static type).
+\end{itemize}
+
+We explicitly forgo the following features in the interest of preserving
+the possibility of static typing in a reasonably broad category of
+situations:
+
+\begin{itemize}
+\item Types themselves are immutable.
+\item The type of a value cannot change over its lifetime.
+\item Local variable environments are not reified.
+\item Program code is immutable, but new code may be generated and executed at any time.
+\item Not all bindings are mutable ({\tt const} identifiers are allowed).
+\end{itemize}
+
+This set of restrictions allows the compiler to see all uses of local
+variables, and perform dataflow analysis on local variables using only
+local information. This is important, since it allows user code to call
+statically-unknown functions without interfering with optimizations done
+around such call sites. Statically-unknown function calls arise in
+many contexts, such as calling a function taken from an untyped data structure,
+or dynamically dispatching a method call due to unknown argument types.
+
+The core Julia language contains the following components:
+
+\begin{enumerate}
+\item A syntax layer, to translate surface syntax to a suitable
+intermediate representation (IR).
+\item A symbolic language and corresponding data structures for representing
+certain kinds of types, and implementations of lattice operators ($meet$,
+$join$, and $\leq$) for those types.
+\item An implementation of generic functions and dynamic multiple dispatch
+based on those types.
+\item Compiler intrinsic functions for accessing the object model
+(type definition, method definition, object allocation, element access,
+testing object identity, and accessing type tags).
+\item Compiler intrinsic functions for native arithmetic, bit string operations,
+and calling native (C or FORTRAN) functions.
+\item A mechanism for binding top-level names.
+\end{enumerate}
+
+The IR describes a function body as a sequence of assignment operations,
+function calls, labels, and conditional branches. Julia's semantics
+are those of a standard imperative language: statements are executed in order,
+with function arguments evaluated eagerly. All values are conceptually
+references, and are passed by reference as in LISP.
+
+Julia's core evaluation semantics are particularly bland, because all of the
+interesting work has been moved to the generic function system. Every
+function definition is actually a definition of a method for some generic
+function for some combination of argument types. The ``feel'' of the language
+derives mostly from the fact that every function call is dynamically
+dispatched to the most specific matching method definition, based on the
+types of all arguments.
+
+
+\section{Types}
+
+Julia uses dynamic typing, which means that the universal type {\tt Any}
+is the only static type. Our design philosophy is that types should be
+quite powerful and expressive, but nearly invisible to the user. Julia
+programmers must be able to ignore the type system completely if they do
+not wish to make explicit use of its functionality.
+
+Julia treats types as symbolic descriptions of sets of values. Every value has
+a unique, immutable, run-time implementation type. Objects carry type tags, and
+types themselves are Julia objects that can be manipulated at run time.
+Julia has five kinds of types:
+
+\begin{enumerate}
+\item abstract types, which may have explicitly-declared subtypes and supertypes
+\item composite types (similar to C structs), which have named fields and
+      explicitly-declared supertypes
+\item bits types, whose values are represented as bit strings, and which may
+      have explicitly-declared supertypes
+\item tuples, immutable ordered collections of values. The type of a tuple is
+defined recursively as a tuple of the types of the elements. Tuple types are
+covariant in their element types. A tuple is used to represent the type of a
+method's arguments.
+\item union types, abstract types constructed from other types via set union
+\end{enumerate}
+
+Abstract types, composite types, and bits types may have parameters, which
+makes it possible to express variants of a given type (for example, array types
+with different element types). These types are all invariant with respect to
+their parameters (i.e. two versions of the same type with different parameters
+are simply different, and have no subtype or supertype relationship). Type
+constructors are applied using curly braces, as in {\tt Array\{Float64,1\}}
+(the {\tt Array} type is parameterized by element type and rank).
+
+Bits types allow users to add new fixed-width number-like types and obtain the
+same performance that primitive numeric types enjoy in other systems. Julia's
+``built in'' numeric types are defined as bits types. Julia method dispatch
+is based on types rather than field lookup, so whether a value is of a bits
+type or composite type is a representation detail that is generally
+invisible.
+
+As an extra complexity, tuple types may end in a special {\tt ...} type that
+indicates any number of elements may be added. This is used to express the
+types of variadic methods. For example the type {\tt (String, Int...)}
+indicates a tuple where the first element is a String and any number of
+trailing integers may be present.
+
+Union types are used primarily to construct tight least upper bounds
+when the inference algorithm needs to join unrelated types. For example,
+a method might return an {\tt Int} or a {\tt String} in separate
+arms of a conditional. In this case its type can be inferred as
+{\tt Union(Int,String)}. Union types are also useful for defining
+ad-hoc type hierarchies different from those imagined when the types
+involved were first defined. For example, we could use
+{\tt Union(Int,Range{Int})} as the type of array indexes, even though
+there is no {\tt Index} type inherited by both constituents. Lastly,
+union types can be used to declare methods applicable to multiple types.
+
+The key to the utility of Julia's type system is its implementation of two
+important functions: the subtype predicate, which determines whether one type
+is a subset of another, and type intersection, which computes a type that is a
+subtype of two given types. These functions form the basis of method dispatch
+logic and type inference.
+
+\subsection{Notational Conveniences}
+
+An important goal is for users to be able to write Julia programs with
+virtually no knowledge of type system details. Therefore we allow writing
+parametric types without parameters, or omitting trailing parameters.
+{\tt Array} refers to any kind of dense array, {\tt Array\{Float64\}} refers
+to a Float64 Array of any rank, and {\tt Array\{Float64,2\}} refers to a
+2-dimensional Float64 Array.
+
+This design also makes it easy to add parameters to types later; existing
+code does not need to be modified.
+
+\subsection{Standard Type Hierarchy}
+Here we present an excerpt from the standard library, showing how a few
+important types are defined. The fields of composite types are redacted for
+the sake of brevity. The {\tt <:} syntax indicates a declared subtype
+relation.
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+abstract Type{T}
+type AbstractKind  <: Type; end
+type BitsKind      <: Type; end
+type CompositeKind <: Type; end
+type UnionKind     <: Type; end
+
+abstract Number
+abstract Real     <: Number
+abstract Float    <: Real
+abstract Integer  <: Real
+abstract Signed   <: Integer
+abstract Unsigned <: Integer
+
+bitstype 32 Float32 <: Float
+bitstype 64 Float64 <: Float
+
+bitstype 8  Bool <: Integer
+bitstype 32 Char <: Integer
+
+bitstype 8  Int8   <: Signed
+bitstype 8  Uint8  <: Unsigned
+bitstype 16 Int16  <: Signed
+bitstype 16 Uint16 <: Unsigned
+bitstype 32 Int32  <: Signed
+bitstype 32 Uint32 <: Unsigned
+bitstype 64 Int64  <: Signed
+bitstype 64 Uint64 <: Unsigned
+
+abstract AbstractArray{T,N}
+type Array{T,N} <: AbstractArray{T,N}; end
+\end{verbatim}
+\end{singlespace}
+
+% pattern emerges where ``user code'' has no types, and the more types
+% written in code the more ``library-like'' it becomes (cite scala?)
+
+
+\section{Syntax}
+
+Julia has a simple block-structured syntax, with notation for type
+and method definition, control flow, and special syntax for important
+operators.
+
+\subsection{Method Definition}
+Method definitions have a long (multi-line) form and a short form.
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+function iszero(x::Number)
+    return x==0
+end
+
+iszero(x) = (x==0)
+\end{verbatim}
+\end{singlespace}
+
+A type declaration with {\tt ::} on an argument is a dispatch specification.
+When types are omitted, the default is {\tt Any}.
+A {\tt ::} expression may be added to any program expression, in which case
+it acts as a run-time type assertion. As a special case, when {\tt ::} is
+applied to a variable name in statement position (a construct which otherwise
+has no effect) it means the variable \emph{always} has the specified type,
+and values will be converted to that type (by calling {\tt convert}) on
+assignment to the variable.
+
+Note that there is no distinct type context; types are computed by ordinary
+expressions
+evaluated at run time. For example, {\tt f(x)::Int} is lowered to the
+function call {\tt typeassert(f(x),Int)}.
+
+Anonymous functions are written using the syntax {\tt x->x+1}.
+
+Local variables are introduced implicitly by assignment. Modifying a
+global variable requires a {\tt global} declaration.
+
+Operators are simply functions with special calling syntax. Their
+definitions look the same as those of ordinary functions, for example
+{\tt +(x,y)~=~...}, or {\tt function~+(x,y)}.
+
+When the last argument in a method signature is followed by {\tt ...}
+the method accepts any number of arguments, and the last argument name
+is bound to a tuple containing the tail of the argument list. The syntax
+{\tt f(t...)} ``splices'' the contents of an iterable object {\tt t} as the
+arguments to {\tt f}.
+
+\subsubsection{Parametric Methods}
+
+It is often useful to refer to parameters of argument types inside methods,
+and to specify constraints on those parameters for dispatch purposes.
+Method parameters address these needs. These parameters behave a bit like
+arguments, but they are always derived automatically from
+the argument types and not specified explicitly by the caller.
+The following signature presents a typical example:
+
+\begin{verbatim}
+function assign{T<:Integer}(a::Array{T,1}, i, n::T)
+\end{verbatim}
+
+This signature is applicable to 1-dimensional arrays whose element type is
+some kind of integer, any type of second argument, and a third argument
+that is the same type as the array's element type. Inside the method,
+{\tt T} will be bound to the array element type.
+
+The primary use of this construct is to write methods applicable to a
+family of parametric types
+(e.g. all integer arrays, or all numeric arrays)
+despite invariance. The other use is
+writing ``diagonal'' constraints as in the example above. Such diagonal
+constraints significantly complicate the type lattice operators.
+
+
+\subsection{Control Flow}
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+if condition1 || (a && b)
+    # single line comment
+elseif !condition2
+else
+    # otherwise
+end
+
+while condition
+    # body
+end
+
+for i in range
+    # body
+end
+\end{verbatim}
+\end{singlespace}
+
+A {\tt for} loop is translated to a while loop with method calls according
+to the iteration interface ({\tt start}, {\tt done}, and {\tt next}):
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+state = start(range)
+while !done(range, state)
+  (i, state) = next(range, state)
+  # body
+end
+\end{verbatim}
+\end{singlespace}
+
+This design for iteration was chosen because it is not tied to mutable
+heap-allocated state, such as an iterator object that updates itself.
+
+\subsection{Special Operators}
+
+Special syntax is provided for certain functions.
+
+\begin{singlespace}
+\begin{tabular}{|l|l|}\hline
+surface syntax     & lowered form \\\hline \hline
+{\tt a[i, j]}      & {\tt ref(a, i, j)} \\\hline
+{\tt a[i, j] = x}  & {\tt assign(a, x, i, j)} \\\hline
+{\tt [a; b]}       & {\tt vcat(a, b)} \\\hline
+{\tt [a, b]}       & {\tt vcat(a, b)} \\\hline
+{\tt [a b]}        & {\tt hcat(a, b)} \\\hline
+{\tt [a b; c d]}   & {\tt hvcat((2,2), a, b, c, d)}\\\hline
+\end{tabular}
+\end{singlespace}
+
+\subsection{Type Definition}
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+# abstract type
+abstract Complex{T<:Real} <: Number
+
+# composite type
+type ComplexPair{T<:Real} <: Complex{T}
+    re::T
+    im::T
+end
+
+# bits type
+bitstype 128 Complex128 <: Complex{Float64}
+
+# type alias
+typealias TwoOf{T} (T,T)
+\end{verbatim}
+\end{singlespace}
+
+\subsubsection{Constructors}
+
+Composite types are applied as functions to construct instances.
+The default constructor accepts values for each field as arguments.
+Users may override the default constructor by writing method definitions
+with the same name as the type inside the {\tt type} block. Inside the
+{\tt type} block the identifier {\tt new} is bound to a pseudofunction
+that actually constructs instances from field values. The constructor
+for the {\tt Rational} type is a good example:
+
+\vspace{-0.2in}
+\begin{singlespace}
+\begin{verbatim}
+type Rational{T<:Integer} <: Real
+    num::T
+    den::T
+
+    function Rational(num::T, den::T)
+        if num == 0 && den == 0
+            error("invalid rational: 0//0")
+        end
+        g = gcd(den, num)
+        new(div(num, g), div(den, g))
+    end
+end
+\end{verbatim}
+\end{singlespace}
+
+This allows {\tt Rational} to enforce representation as a fraction in
+lowest terms.
+
+
+\section{Generic Functions}
+
+% talk about how this is a sneaky way to collect type information. since
+% signatures specify dispatch behavior they are not redundant information.
+
+The vast majority of Julia functions (in both the library and user programs)
+are generic functions, meaning they contain multiple definitions or methods for
+various combinations of argument types. When a generic function is applied,
+the most specific definition that matches the run-time argument types is
+invoked. Generic functions have appeared in several object systems in the past,
+notably CLOS \cite{closoverview} and Dylan \cite{dylanlang}.
+Julia is distinguished from these in that
+it uses generic functions as its primary abstraction mechanism, putting it in
+the company of research languages like Diesel \cite{dieselspec}. Aside
+from being practical for highly polymorphic mathematical styles of programming,
+as we will discuss, this design is satisfying also because it permits
+expression of most of the popular patterns of object-oriented programming,
+while leaving the core language with fewer distinct features.
+
+Generic functions are a natural fit for mathematical programming. For example,
+consider implementing exponentiation (the {\tt \^{}} operator in Julia).
+This function
+lends itself to multiple definitions, specializing on both arguments
+separately: there might be one definition for two floating-point numbers that
+calls a standard math library routine, one definition for the case where the
+second argument is an integer, and separate definitions for the case where the
+first argument is a matrix. In Julia these signatures would be written as
+follows:
+
+\begin{verbatim}
+function ^(x::Float64, p::Float64)
+function ^(x, p::Int)
+function ^(x::Matrix, p)
+\end{verbatim}
+
+\subsection{Singleton Kinds}
+
+A generic function's method table is effectively a dictionary where the keys
+are types. This suggests that it should be just as easy to define or look up
+methods with types themselves as with the types of values. Defining methods on
+types directly is analogous to defining class methods in class-based object
+systems. With multi-methods, definitions can be associated with combinations
+of types, making it easy to represent properties not naturally owned by one
+type.
+
+To accomplish this, we introduce a special singleton kind {\tt Type\{T\}},
+which contains the type {\tt T} as its only value.
+%This is similar to the
+%self-type pattern [cite], except along the type-of hierarchy rather than along
+%the subtype-of hierarchy.
+The result is a feature similar to {\tt eql}
+specializers in CLOS, except only for types. An example use is defining
+type traits:
+
+\begin{verbatim}
+typemax(::Type{Int64}) = 9223372036854775807
+\end{verbatim}
+
+This definition will be invoked by the call {\tt typemax(Int64)}. Note that
+the name of a method argument can be omitted if it is not referenced.
+
+Types are useful as method arguments in several other cases. One example is
+file I/O, where a type can be used to specify what to read. The call
+{\tt read(file,Int32)} reads a 4-byte integer and returns it as an {\tt Int32}
+(a fact that the type inference process is able to discover). We find this
+more elegant and convenient than systems where enums or special constants must
+be used for this purpose, or where the type information is implicit
+(e.g. through return-type overloading).
+
+\subsection{Method Sorting and Ambiguity}
+Methods are stored sorted by specificity, so the first matching method
+(as determined by the subtype predicate) is always the correct one to invoke.
+This means much of the dispatch logic is contained in the sorting process.
+Comparing method signatures for specificity is not trivial. As one might
+expect, the ``more specific''\footnote{Actually, ``not less specific'',
+since specificity is a partial order.}
+predicate is quite similar to the subtype
+predicate, since a type that is a subtype of another is indeed more specific
+than it. However, a few additional rules are necessary to capture the
+intuitive concept of ``more specific''. In fact until this point
+``more specific'' has had no formal meaning; its formal definition is
+summarized as the disjunction of the following rules ($A$ is more specific
+than $B$ if):
+
+\pagebreak
+
+\begin{enumerate}
+\item $A$ is a subtype of $B$
+\item $A$ is of the form {\tt T\{P\}} and $B$ is of the form {\tt S\{Q\}}, and
+$T$ is a subtype of $S$ for some parameter values
+\item The intersection of $A$ and $B$ is nonempty, more specific than $B$, and
+not equal to $B$, and $B$ is not more specific than $A$
+\item $A$ and $B$ are tuple types, $A$ ends in a vararg ({\tt ...}) type,
+and $A$ would be more specific than $B$ if its vararg type were expanded to
+give it the same number of elements as $B$
+\end{enumerate}
+
+Rule 2 means that declared subtypes are always more specific than their
+declared supertypes regardless of type parameters. Rule 3 is mostly useful for
+union types: if $A$ is {\tt Union(Int32,String)} and $B$ is {\tt Number}, $A$
+should
+be more specific than $B$ because their intersection ({\tt Int32}) is clearly
+more specific than $B$. Rule 4 means that argument types are more important for
+specificity than argument count; if $A$ is {\tt (Int32...)} and $B$ is
+{\tt (Number, Number)} then $A$ is more specific.
+
+Julia uses \emph{symmetric} multiple dispatch, which means all argument types
+are equally important. Therefore, ambiguous signatures are possible.
+For example, given {\tt foo(x::Number, y::Int)} and
+{\tt foo(x::Int, y::Number)} it is not clear which method to call when both
+arguments are integers. We detect ambiguities when a method is added, by
+looking for a pair of signatures with a non-empty intersection where neither
+one is more specific than the other. A warning message is displayed for each
+ambiguity, showing the user the computed type intersection so it is clear what
+definition is missing. For example:
+
+\begin{verbatim}
+Warning: New definition foo(Int,Number) is ambiguous with foo(Number,Int).
+        Make sure foo(Int,Int) is defined first.
+\end{verbatim}
+
+
+\section{Intrinsic Functions}
+
+The run-time system contains a small number of primitive functions for tasks
+like determining the type of a value, accessing fields of composite types, and
+constructing values of each of the supported kinds of concrete types. There are
+also arithmetic intrinsics corresponding to machine-level operations like
+fixed-width integer addition, bit shifts, etc. These intrinsic functions are
+implemented only in the code generator and do not have callable entry points.
+They operate on bit strings, which are not first class values but can be
+converted to and from Julia bits types via boxing and unboxing operations.
+
+In our implementation, the core system also provides functions for constructing
+arrays and accessing array elements. Although this is not strictly necessary,
+we did not want to expose unsafe memory operations (e.g. load and store
+primitives) in the language. In an earlier implementation, the core system
+provided a bounds-checked {\tt Buffer} abstraction, but having both this type
+and the user-level {\tt Array} type proved inconvenient and confusing.
+
+
+\section{Design Limitations}
+
+In our design, type information always flows along with values, in the
+forward control flow direction. This prevents us from doing certain tricks
+that static type systems are capable of, such as return-type overloading.
+Return-type overloading requires a robust notion of the type of a value
+\emph{context}---the type expected or required of some term---in order to
+select code on that basis. There are other cases where ``backwards'' type
+flow might be desirable, such as determining the type of a container based
+on the type of a value stored into it at a later program point. It may be
+possible to get around this limitation in the future using inversion of
+control---passing a function argument whose result type has already been
+inferred, and using that type to construct a container before elements are
+computed.
+
+Modularity is a perennial difficulty with multiple dispatch, as any
+function may apply to any type, and there is no point where functions or
+types are closed to future definitions. Thus at the moment Julia is
+essentially a whole-program compiler. We plan to implement a module system
+that will at least allow code to control which name bindings and definitions
+it sees. Such modules could be separately compiled to the extent that
+programmers are willing to ask for their definitions to be ``closed''.
+
+Lastly, at this time Julia uses a bit more memory than we would prefer.
+Our compiler data structures, type information, and generated native code
+take up more space than the compact bytecode representations used by many
+dynamic languages.
+
+
+%\section{Extra Features}
+
+%symmetric coroutines
+
+%macros
+
+%ccall
