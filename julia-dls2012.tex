@@ -36,7 +36,6 @@
            {edelman@math.mit.edu}
 
 \maketitle
-
 \begin{abstract}
   Dynamic programming languages have become popular for scientific
   computing. They are generally considered highly productive, but
@@ -51,12 +50,12 @@
   best-of-breed C and Fortran libraries.
 \end{abstract}
 
-\category{D.3.2}{Programming Languages}{Very high-level languages}
+%\category{D.3.2}{Programming Languages}{Very high-level languages}
 
-\terms
+%\terms
 Programming Language, Technical computing, Scientific computing
 
-\keywords
+%\keywords
 Programming Language for Technical Computing
 
 \section{Introduction}
@@ -64,7 +63,7 @@ Programming Language for Technical Computing
 Convenience is winning. Despite continued advances in compiler technology
 and execution frameworks for high-performance computing, programmers
 routinely use high-level dynamic languages for algorithm
-development in applied math and the sciences. These systems
+development in applied math, engineering,  and the sciences. These systems
 (prominent examples include Python \cite{numpy}, R \cite{Rlang},
 MATLAB\textregistered, Octave \cite{Octave}, and SciLab \cite{scilab})
 have greatly increased
@@ -72,16 +71,19 @@ productivity, but are known to lack performance for many demanding applications.
 The result is a two-tiered software world, where
 C and FORTRAN are used for key libraries and production code, while
 high-level languages are used for interaction and scripting overall workflow.
-In this thesis I argue that a new approach to dynamic language design can
+A new approach to dynamic language design can
 change this situation, providing productivity and performance at once. We
 should embrace the emerging preference for ``scripting'' style languages,
 and ask how these systems can better provide for the future of technical
 computing.
 
-The ``two-tier'' architecture, for example writing an application in
+The ``two-tier'' architecture\footnote{  "To be clear, applications can and often do consist of code in many languages.  It is perfectly reasonable of course to call existing well understood, accurate, and well performing libraries.
+Working codes adhere to the old saying, "If it ain't broke, don't fix it." Also reasonable
+is to pick several languages, based on the user's sense of a good expressive match to the
+application.  The problem we are exploring  is the common switch to another language made only for reasons of performance."}, for example, writing an application in
 Python with performance-critical code written in C, seems like a good way
-to balance performance and productivity, but there are many reasons
-to move away from it.
+to balance performance and productivity. However, there are many reasons
+to move away from this architecture.
 Naturally, it would be preferable to write compute-intensive code in a
 more productive language as well, especially when developing parallel
 algorithms, where code complexity can increase dramatically.
