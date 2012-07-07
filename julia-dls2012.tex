@@ -9,6 +9,7 @@
 % authoryear    To obtain author/year citation style instead of numeric.
 
 \usepackage{amsmath}
+\usepackage{amsthm}
 \usepackage{algorithm}
 \usepackage{algorithmic}
 
@@ -893,53 +894,53 @@ the recursive inference process may stop immediately.
 % \renewcommand{\algorithmicrequire}{\textbf{Input:}}
 % \renewcommand{\algorithmicensure}{\textbf{Output:}}
 
-% \begin{algorithm}
-% \caption{Infer function return type}
-% \label{alg1}
-% \begin{algorithmic}
-% \REQUIRE function $F$, argument type tuple $A$, abstract execution stack $T$
-% \ENSURE result type $T.R$
-% \STATE $V \leftarrow$ set of all locally-bound names
-% \STATE $V_{a} \leftarrow$ argument names
-% \STATE $n \leftarrow \length(F)$
-% \STATE $W \leftarrow \{1\}$ \COMMENT {set of program counters}
-% \STATE $P_r \leftarrow \emptyset$ \COMMENT {statements that recur}
-% \STATE $\forall i, S[1,V[i]] \leftarrow \text{Undef}$
-% \STATE $\forall i, S[1,V_{a}[i]] \leftarrow A[i]$
-% \WHILE{$W \neq \emptyset$}
-%  \STATE $p \leftarrow \operatorname{choose}(W)$
-%  \REPEAT
-%   \STATE $W \leftarrow W - p$
-%   \STATE $new \leftarrow interpret(F[p],S[p],T)$
-%   \IF {$T.rec$}
-%    \STATE $P_r \leftarrow P_r \cup \{p\}$
-%    \STATE $T.rec \leftarrow \text{false}$
-%   \ENDIF
-%   \STATE $p\prime \leftarrow p+1$
-%   \IF{$F[p] = $\texttt{(goto l)}}
-%    \STATE $p\prime \leftarrow l$
-%   \ELSIF{$F[p] = $\texttt{(gotoif cond l)}}
-%    \IF {\NOT $new \leq S[l]$}
-%     \STATE $W \leftarrow W \cup \{l\}$
-%     \STATE $S[l] \leftarrow S[l] \sqcup new$
-%    \ENDIF
-%   \ELSIF{$F[p] = $\texttt{(return e)}}
-%    \STATE $p\prime \leftarrow n+1$
-%    \STATE $r \leftarrow eval(e,S[p],T)$
-%    \IF {\NOT $r \leq T.R$}
-%     \STATE $T.R \leftarrow T.R \sqcup r$
-%     \STATE $W \leftarrow W \cup P_r$
-%    \ENDIF
-%   \ENDIF
-%   \IF{$p\prime \leq n$ \AND \NOT $new \leq S[p\prime]$}
-%    \STATE $S[p\prime] \leftarrow S[p\prime] \sqcup new$
-%    \STATE $p \leftarrow p\prime$
-%   \ENDIF
-%  \UNTIL{$p\prime = n+1$}
-% \ENDWHILE
-% \STATE {$T.rec \leftarrow P_r \neq \emptyset$}
-% \end{algorithmic}
-% \end{algorithm}
+\begin{algorithm}
+\caption{Infer function return type}
+\label{alg1}
+\begin{algorithmic}
+\REQUIRE function $F$, argument type tuple $A$, abstract execution stack $T$
+\ENSURE result type $T.R$
+\STATE $V \leftarrow$ set of all locally-bound names
+\STATE $V_{a} \leftarrow$ argument names
+\STATE $n \leftarrow length(F)$
+\STATE $W \leftarrow \{1\}$ \COMMENT {set of program counters}
+\STATE $P_r \leftarrow \emptyset$ \COMMENT {statements that recur}
+\STATE $\forall i, S[1,V[i]] \leftarrow \text{Undef}$
+\STATE $\forall i, S[1,V_{a}[i]] \leftarrow A[i]$
+\WHILE{$W \neq \emptyset$}
+ \STATE $p \leftarrow \operatorname{choose}(W)$
+ \REPEAT
+  \STATE $W \leftarrow W - p$
+  \STATE $new \leftarrow interpret(F[p],S[p],T)$
+  \IF {$T.rec$}
+   \STATE $P_r \leftarrow P_r \cup \{p\}$
+   \STATE $T.rec \leftarrow \text{false}$
+  \ENDIF
+  \STATE $p\prime \leftarrow p+1$
+  \IF{$F[p] = $\texttt{(goto l)}}
+   \STATE $p\prime \leftarrow l$
+  \ELSIF{$F[p] = $\texttt{(gotoif cond l)}}
+   \IF {\NOT $new \leq S[l]$}
+    \STATE $W \leftarrow W \cup \{l\}$
+    \STATE $S[l] \leftarrow S[l] \sqcup new$
+   \ENDIF
+  \ELSIF{$F[p] = $\texttt{(return e)}}
+   \STATE $p\prime \leftarrow n+1$
+   \STATE $r \leftarrow eval(e,S[p],T)$
+   \IF {\NOT $r \leq T.R$}
+    \STATE $T.R \leftarrow T.R \sqcup r$
+    \STATE $W \leftarrow W \cup P_r$
+   \ENDIF
+  \ENDIF
+  \IF{$p\prime \leq n$ \AND \NOT $new \leq S[p\prime]$}
+   \STATE $S[p\prime] \leftarrow S[p\prime] \sqcup new$
+   \STATE $p \leftarrow p\prime$
+  \ENDIF
+ \UNTIL{$p\prime = n+1$}
+\ENDWHILE
+\STATE {$T.rec \leftarrow P_r \neq \emptyset$}
+\end{algorithmic}
+\end{algorithm}
 
 \subsubsection{Interprocedural Type Inference}
 
@@ -961,38 +962,38 @@ continues to re-run inference on incomplete functions, updating the
 inferred result type, until no recursion occurs or the result type
 converges.
 
-% \begin{algorithm}
-% \caption{Interprocedural type inference}
-% \label{alg2}
-% \begin{algorithmic}
-% \REQUIRE function $F$, argument type tuple $A$, abstract execution stack $S$
-% \ENSURE returned result type
-% \STATE $R \leftarrow \bot$
-% \IF {$\recall(F,A)$ exists}
-%  \STATE $R \leftarrow \recall(F,A)$
-%  \IF {\NOT $incomplete(F,A)$}
-%   \RETURN $R$
-%  \ENDIF
-% \ENDIF
-% \STATE $f \leftarrow S$
-% \WHILE {\NOT $\operatorname{empty}(f)$}
-%  \IF {$f.F$ is $F$ \AND $f.A=A$}
-%   \STATE $r \leftarrow S$
-%   \WHILE {\NOT $r=\tail(f)$}
-%    \STATE $r.rec \leftarrow \text{true}$
-%    \STATE $r \leftarrow \tail(r)$
-%   \ENDWHILE
-%   \RETURN $f.R$
-%  \ENDIF
-%  \STATE $f \leftarrow \tail(f)$
-% \ENDWHILE
-% \STATE $T \leftarrow \extend(S, \Frame(F=F,A=A,R=R,rec=\text{false}))$
-% \STATE invoke Algorithm~\ref{alg1} on $F,A,T$
-% \STATE $\recall(F,A) \leftarrow T.R$
-% \STATE $incomplete(F,A) \leftarrow (T.rec \land \neg(R=T.R))$
-% \RETURN $T.R$
-% \end{algorithmic}
-% \end{algorithm}
+\begin{algorithm}
+\caption{Interprocedural type inference}
+\label{alg2}
+\begin{algorithmic}
+\REQUIRE function $F$, argument type tuple $A$, abstract execution stack $S$
+\ENSURE returned result type
+\STATE $R \leftarrow \bot$
+\IF {$recall(F,A)$ exists}
+ \STATE $R \leftarrow recall(F,A)$
+ \IF {\NOT $incomplete(F,A)$}
+  \RETURN $R$
+ \ENDIF
+\ENDIF
+\STATE $f \leftarrow S$
+\WHILE {\NOT $\operatorname{empty}(f)$}
+ \IF {$f.F$ is $F$ \AND $f.A=A$}
+  \STATE $r \leftarrow S$
+  \WHILE {\NOT $r=tail(f)$}
+   \STATE $r.rec \leftarrow \text{true}$
+   \STATE $r \leftarrow tail(r)$
+  \ENDWHILE
+  \RETURN $f.R$
+ \ENDIF
+ \STATE $f \leftarrow tail(f)$
+\ENDWHILE
+\STATE $T \leftarrow extend(S, Frame(F=F,A=A,R=R,rec=\text{false}))$
+\STATE invoke Algorithm~\ref{alg1} on $F,A,T$
+\STATE $recall(F,A) \leftarrow T.R$
+\STATE $incomplete(F,A) \leftarrow (T.rec \land \neg(R=T.R))$
+\RETURN $T.R$
+\end{algorithmic}
+\end{algorithm}
 
 Because this algorithm approximates run-time behavior, we are free to
 change it without affecting the behavior of user programs --- except
@@ -1000,7 +1001,7 @@ that they might run faster. One valuable improvement is
 to attempt full evaluation of branch conditions, and remove branches
 with constant conditions.
 
-%\subsubsection{Type Transfer Functions}
+\subsubsection{Type Transfer Functions}
 
 %todo ?
 
@@ -1041,48 +1042,48 @@ invariant context (i.e. type parameters). The algorithm uses subroutines
 $p(A)$ which gives the parameters of type $A$, and $super(A)$ which gives
 the declared supertype of $A$.
 
-% \begin{algorithm}
-% \caption{Subtype}
-% \label{alg3}
-% \begin{algorithmic}
-% \REQUIRE types $A$ and $B$
-% \ENSURE $A \leq B$
-% \IF {$A$ is a tuple type}
-%  \IF {$B$ is not a tuple type}
-%   \RETURN false
-%  \ENDIF
-%  \FOR {$i=1$ \TO $\length(A)$}
-%   \IF {$A[i]$ is $T...$}
-%    \IF {$\last(B)$ exists and is not $S...$}
-%     \RETURN false
-%    \ENDIF
-%    \RETURN $subtype(T,B[j])), i \leq j \leq \length(B)$
-%   \ELSIF {$i > \length(B)$ \OR \NOT $subtype(A[i],B[i])$}
-%    \RETURN false
-%   \ELSIF {$B[i]$ is $T...$}
-%    \RETURN $subtype(A[j],T)), i < j \leq \length(A)$
-%   \ENDIF
-%  \ENDFOR
-% \ELSIF {$A$ is a union type}
-%  \RETURN $\forall t \in A, subtype(t,B)$
-% \ELSIF {$B$ is a union type}
-%  \RETURN $\exists t \in B, subtype(A,t)$
-% \ENDIF
-% \WHILE {$A \neq \texttt{Any}$}
-%  \IF {$\typename(A) = \typename(B)$}
-%   \RETURN {$subtype(\p(A),\p(B)) \land subtype(\p(B),\p(A))$}
-%  \ENDIF
-%  \STATE $A \leftarrow \super(A)$
-% \ENDWHILE
-% \IF {$A$ is of the form {\tt Type\{T\}}}
-%  \RETURN $subtype(typeof(\p(A)[1]),B)$
-% \ELSIF {$B$ is of the form {\tt Type\{T\}}}
-%  \STATE $B \leftarrow \p(B)[1]$
-%  \RETURN $subtype(A,B) \land subtype(B,A)$
-% \ENDIF
-% \RETURN $B = \texttt{Any}$
-% \end{algorithmic}
-% \end{algorithm}
+\begin{algorithm}
+\caption{Subtype}
+\label{alg3}
+\begin{algorithmic}
+\REQUIRE types $A$ and $B$
+\ENSURE $A \leq B$
+\IF {$A$ is a tuple type}
+ \IF {$B$ is not a tuple type}
+  \RETURN false
+ \ENDIF
+ \FOR {$i=1$ \TO $length(A)$}
+  \IF {$A[i]$ is $T...$}
+   \IF {$last(B)$ exists and is not $S...$}
+    \RETURN false
+   \ENDIF
+   \RETURN $subtype(T,B[j])), i \leq j \leq length(B)$
+  \ELSIF {$i > length(B)$ \OR \NOT $subtype(A[i],B[i])$}
+   \RETURN false
+  \ELSIF {$B[i]$ is $T...$}
+   \RETURN $subtype(A[j],T)), i < j \leq length(A)$
+  \ENDIF
+ \ENDFOR
+\ELSIF {$A$ is a union type}
+ \RETURN $\forall t \in A, subtype(t,B)$
+\ELSIF {$B$ is a union type}
+ \RETURN $\exists t \in B, subtype(A,t)$
+\ENDIF
+\WHILE {$A \neq \texttt{Any}$}
+ \IF {$typename(A) = typename(B)$}
+  \RETURN {$subtype(p(A),p(B)) \land subtype(p(B),p(A))$}
+ \ENDIF
+ \STATE $A \leftarrow super(A)$
+\ENDWHILE
+\IF {$A$ is of the form {\tt Type\{T\}}}
+ \RETURN $subtype(typeof(p(A)[1]),B)$
+\ELSIF {$B$ is of the form {\tt Type\{T\}}}
+ \STATE $B \leftarrow p(B)[1]$
+ \RETURN $subtype(A,B) \land subtype(B,A)$
+\ENDIF
+\RETURN $B = \texttt{Any}$
+\end{algorithmic}
+\end{algorithm}
 
 
 \subsubsection{Type Union}
@@ -1127,87 +1128,87 @@ When a parameter is a type variable, it is effectively covariant, and
 must be intersected with the corresponding parameter of the other type
 to form the final result.
 
-% \begin{algorithm}
-% \caption{Intersubsection of nominative types}
-% \label{alg4}
-% \begin{algorithmic}
-% \REQUIRE types $A$ and $B$, current constraint environment
-% \ENSURE return $T$ such that $A \sqcap B \leq T$, updated environment
-% \IF {$typename(A) = typename(B)$}
-%  \STATE $pa \leftarrow \operatorname{copy}(\p(A))$
-%  \FOR {$i=1$ \TO $\length(\p(A))$ }
-%   \IF {$\p(A)[i]$ is a typevar}
-%    \STATE {add $(\p(A)[i]=\p(B)[i])$ to constraints}
-%   \ELSIF {$\p(B)[i]$ is a typevar}
-%    \STATE {add $(\p(B)[i]=\p(A)[i])$ to constraints}
-%   \ENDIF
-%   \STATE $pa[i] \leftarrow \intersect(\p(A)[i],\p(B)[i])$
-%  \ENDFOR
-%  \RETURN {$typename(A)\{pa...\}$}
-% \ELSE
-%  \STATE $sup \leftarrow \intersect(\super(A),B)$
-%  \IF {$sup = \bot$}
-%   \STATE $sup \leftarrow \intersect(A,\super(B))$
-%   \IF {$sup = \bot$}
-%    \RETURN $\bot$
-%   \ELSE
-%    \STATE $sub \leftarrow B$
-%   \ENDIF
-%  \ELSE
-%   \STATE $sub \leftarrow A$
-%  \ENDIF
-%  \STATE $E \leftarrow \conform(sup, \superdecl(sub))$
-%  \IF {$E$ contains parameters not in $\formals(sub)$}
-%   \RETURN $\bot$
-%  \ENDIF
-%  \RETURN $\intersect(sub, typename(sub)\{E...\})$
-% \ENDIF
-% %\FORALL {$(S=U) \in E$}
-% % \STATE {$V \leftarrow $ value of $S$ in $sub$}
-% % \STATE {replace $U$ with $intersect(U,V)$}
-% %\ENDFOR
-% %\RETURN {instantiate $sub$ with $E$}
-% \end{algorithmic}
-% \end{algorithm}
+\begin{algorithm}
+\caption{Intersubsection of nominative types}
+\label{alg4}
+\begin{algorithmic}
+\REQUIRE types $A$ and $B$, current constraint environment
+\ENSURE return $T$ such that $A \sqcap B \leq T$, updated environment
+\IF {$typename(A) = typename(B)$}
+ \STATE $pa \leftarrow \operatorname{copy}(p(A))$
+ \FOR {$i=1$ \TO $length(p(A))$ }
+  \IF {$p(A)[i]$ is a typevar}
+   \STATE {add $(p(A)[i]=p(B)[i])$ to constraints}
+  \ELSIF {$p(B)[i]$ is a typevar}
+   \STATE {add $(p(B)[i]=p(A)[i])$ to constraints}
+  \ENDIF
+  \STATE $pa[i] \leftarrow intersect(p(A)[i],p(B)[i])$
+ \ENDFOR
+ \RETURN {$typename(A)\{pa...\}$}
+\ELSE
+ \STATE $sup \leftarrow intersect(super(A),B)$
+ \IF {$sup = \bot$}
+  \STATE $sup \leftarrow intersect(A,super(B))$
+  \IF {$sup = \bot$}
+   \RETURN $\bot$
+  \ELSE
+   \STATE $sub \leftarrow B$
+  \ENDIF
+ \ELSE
+  \STATE $sub \leftarrow A$
+ \ENDIF
+ \STATE $E \leftarrow conform(sup, superdecl(sub))$
+ \IF {$E$ contains parameters not in $formals(sub)$}
+  \RETURN $\bot$
+ \ENDIF
+ \RETURN $intersect(sub, typename(sub)\{E...\})$
+\ENDIF
+%\FORALL {$(S=U) \in E$}
+% \STATE {$V \leftarrow $ value of $S$ in $sub$}
+% \STATE {replace $U$ with $intersect(U,V)$}
+%\ENDFOR
+%\RETURN {instantiate $sub$ with $E$}
+\end{algorithmic}
+\end{algorithm}
 
-% \begin{algorithm}
-% \caption{Solve type variable constraints}
-% \label{alg5}
-% \begin{algorithmic}
-% \REQUIRE environment $X$ of pairs $T\leq S$ and $T=S$
-% \ENSURE environment $Y$ of unique variable assignments $T=S$, or failure
-% \STATE $Y \leftarrow \emptyset$
-% \STATE replace $(T\leq S) \in X$ with $(T=S)$ when $S$ is concrete
-% \FORALL {$(T=S) \in X$}
-%  \IF {$(T=R) \in X$ \AND $S\neq R$}
-%   \RETURN failure
-%  \ENDIF
-% \ENDFOR
-% \FORALL {$(T\leq S) \in X$}
-%  \IF {$(T=U) \in X$}
-%   \IF {\NOT $\find(X,U)\leq S$}
-%    \RETURN failure
-%   \ELSE
-%    \STATE $X \leftarrow X - (T\leq S)$
-%   \ENDIF
-%  \ELSIF {$(T\leq U) \in X$ and $U$ not a variable}
-%   \STATE replace $U$ with $U\sqcap^{*}S$
-%   \STATE $X \leftarrow X - (T\leq S)$
-%  \ENDIF
-% \ENDFOR
-% \FORALL {variables $T$}
-%  \IF {$(T=U) \in X$}
-%   \STATE $Y \leftarrow Y \cup \{T=U\}$
-%  \ELSE
-%   \STATE $S \leftarrow \bigsqcap^{*}_{} \find(X,U), \forall (T\leq U) \in X$
-%   \IF {$S = \bot$}
-%    \RETURN failure
-%   \ENDIF
-%   \STATE $Y \leftarrow Y \cup \{T=S\}$
-%  \ENDIF
-% \ENDFOR
-% \end{algorithmic}
-% \end{algorithm}
+\begin{algorithm}
+\caption{Solve type variable constraints}
+\label{alg5}
+\begin{algorithmic}
+\REQUIRE environment $X$ of pairs $T\leq S$ and $T=S$
+\ENSURE environment $Y$ of unique variable assignments $T=S$, or failure
+\STATE $Y \leftarrow \emptyset$
+\STATE replace $(T\leq S) \in X$ with $(T=S)$ when $S$ is concrete
+\FORALL {$(T=S) \in X$}
+ \IF {$(T=R) \in X$ \AND $S\neq R$}
+  \RETURN failure
+ \ENDIF
+\ENDFOR
+\FORALL {$(T\leq S) \in X$}
+ \IF {$(T=U) \in X$}
+  \IF {\NOT $find(X,U)\leq S$}
+   \RETURN failure
+  \ELSE
+   \STATE $X \leftarrow X - (T\leq S)$
+  \ENDIF
+ \ELSIF {$(T\leq U) \in X$ and $U$ not a variable}
+  \STATE replace $U$ with $U\sqcap^{*}S$
+  \STATE $X \leftarrow X - (T\leq S)$
+ \ENDIF
+\ENDFOR
+\FORALL {variables $T$}
+ \IF {$(T=U) \in X$}
+  \STATE $Y \leftarrow Y \cup \{T=U\}$
+ \ELSE
+  \STATE $S \leftarrow \sqcap^{*} find(X,U), \forall (T\leq U) \in X$
+  \IF {$S = \bot$}
+   \RETURN failure
+  \ENDIF
+  \STATE $Y \leftarrow Y \cup \{T=S\}$
+ \ENDIF
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
 
 When the argument types are not from the same family, we recur up the
 type hierarchy to see if any supertype of one of the arguments matches
