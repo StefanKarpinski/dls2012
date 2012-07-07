@@ -1326,12 +1326,517 @@ used, in some cases LLVM has been able to delete the whole thing.
 \item storing compiler data serialized
 \end{enumerate}
 
+\section{Example Use Cases}
+
+%By design, it is possible to write many programs in Julia that are
+%entirely unsurprising to users of current systems such as Python, R, and
+%MATLAB\textregistered. Therefore, in this chapter we focus instead on
+%more novel uses enabled by Julia's types and dispatch mechanism.
+
+% these examples focus on unique features of julia. much julia code is
+% written without using this sort of functionality, and looks quite similar
+% to code in current systems.
+
+\subsection{Numeric Type Promotion}
+
+Numeric types and arithmetic are fundamental to all programming, but deserve
+extra attention in the case of scientific computing.
+In traditional compiled languages such as C, the arithmetic operators are the
+most polymorphic ``functions'', and hence cannot be written in the language
+itself. Arithmetic must be defined in the compiler, including contentious
+decisions such as how to handle operations with mixed argument types.
+
+In Julia, multiple dispatch is used to define arithmetic and type
+promotion behaviors at the library level rather than in the compiler.
+As a result, the system smoothly incorporates new
+operators and numeric types with minimal work.
+
+Four key utility functions comprise the type promotion system.
+For simplicity, we consider only two-argument forms of promotion
+although multi-argument promotion is also defined and used.
+
+\begin{enumerate}
+\item {\tt convert(T, value)} converts its second argument to type {\tt T}
+\item {\tt promote\_rule(T1,T2) } defines which of two types is greater in
+the promotion partial order
+\item {\tt promote\_type(T1,T2) } uses {\tt promote\_rule} to determine which
+type should be used for values of types {\tt T1} and {\tt T2}
+\item {\tt promote(v1, v2) } converts its arguments to an appropriate type
+and returns the results
+\end{enumerate}
+
+{\tt promote} is implemented as follows:
+
+\begin{verbatim}
+function promote{T,S}(x::T, y::S)
+    (convert(promote_type(T,S),x), convert(promote_type(T,S),y))
+end
+\end{verbatim}
+
+{\tt promote\_type} simply tries {\tt promote\_rule} with its arguments in
+both orders, to avoid the need for repeated definitions:
+
+\begin{verbatim}
+function promote_type{T,S}(::Type{T}, ::Type{S})
+    if applicable(promote_rule, T, S)
+        return promote_rule(T,S)
+    elseif applicable(promote_rule, S, T)
+        return promote_rule(S,T)
+    else
+        error("no promotion exists for ",T," and ",S)
+    end
+end
+\end{verbatim}
+
+{\tt convert} and {\tt promote\_rule} are implemented for each type. Two
+such definitions for the {\tt Complex128} type are:
+
+\begin{verbatim}
+promote_rule(::Type{Complex128}, ::Type{Float64}) = Complex128
+convert(::Type{Complex128}, x::Real) = complex128(x, 0)
+\end{verbatim}
+
+With these definitions in place, a function may gain generic promotion
+behavior by adding the following kind of definition:
+
+\begin{verbatim}
++(x::Number, y::Number) = +(promote(x,y)...)
+\end{verbatim}
+
+This means that, given two numeric arguments where no more specific
+definition matches, promote the arguments and retry the operation
+(the {\tt ...} ``splices'' the two values returned by {\tt promote} into
+the argument list).
+The standard library contains such definitions for all basic arithmetic
+operators.
+For this recursion to terminate, we require only that each {\tt Number}
+type implement {\tt +} for two arguments of that type, e.g.
+
+\begin{verbatim}
++(x::Int64, y::Int64) = ...
++(x::Float64, y::Float64) = ...
++(x::Complex128, y::Complex128) = ...
+\end{verbatim}
+
+Therefore, each new type requires only one definition of each operator,
+and a handful of {\tt convert} and {\tt promote\_rule} definitions.
+If $n$ is the number of types and $m$ is the number of operators, a new
+type requires $O(n+m)$ rather than $O(n\cdot m)$ definitions.
+
+The reader will notice that uses of this mechanism involve multiple method
+calls, as well as potentially expensive features such as tuple allocation
+and argument splicing. Without a sufficient optimizing compiler, this
+implementation would be completely impractical. Fortunately, through
+type analysis, inlining, elision of unnecessary tuples, and lowering of
+the {\tt apply} operation implied by {\tt ...}, Julia's compiler is able
+to eliminate all of the overhead in most cases, ultimately yielding a
+sequence of machine instructions comparable to that emitted by a
+traditional compiler.
+
+The most troublesome function is {\tt promote\_type}. For good performance,
+we must elide calls to it, but doing so may be incorrect since the function
+might throw an error. By fortunate coincidence though, the logic in
+{\tt promote\_type} exactly mirrors the analysis done by type inference: it
+only throws an error if no matching methods exist for its calls to
+{\tt promote\_rule}, in which case type inference concludes that the
+function throws an error regardless of which branch is taken.
+{\tt applicable} is a built-in function known to be free of effects.
+Therefore, whenever a sharp result type for {\tt promote\_type} can be
+inferred, it is also valid to remove the unused arms of the conditional.
+
+
+\subsection{Code Generation and Staged Functions}
+
+The presence of types and an inference pass creates a new, intermediate
+translation stage which may be customized (macros essentially customize
+syntax processing, and object systems customize run time behavior).
+This is the stage at which types are known, and it exists in Julia via
+the compiler's method specialization machinery. Specialization may occur
+at run time during dispatch, or at compile time when inference is able
+to determine argument types accurately.
+Running custom code at this stage has two tremendous effects:
+first, optimized code can be generated for special cases, and
+second, the type inference system can effectively be extended to be able to
+make new type deductions relevant to the user's application.
+
+For example, we might want to write functions that apply to two
+arrays of different dimensionality, where the result has the higher of the
+two argument dimensionalities. One such function is a ``broadcasting''
+binary elementwise operator, that performs computations such as adding a
+column vector to every column of a matrix, or adding a plane to every slice
+of a 3-dimensional dataset. We can determine the shape of the result
+array with the following function:
+
+\begin{verbatim}
+function promote_shape(s1::Tuple, s2::Tuple)
+    if length(s1) > length(s2)
+        return s1
+    else
+        return s2
+    end
+end
+\end{verbatim}
+
+The type system can easily express the types of array shapes, for example
+{\tt (Int,Int)} and {\tt (Int,Int,Int)}. However, inferring a sharp result
+type for this simple function is still challenging. The inference algorithm
+would have to possess a theory of the {\tt length} and {\tt >} functions,
+which is not easily done given that all Julia functions may be redefined
+and overloaded with arbitrary methods.
+
+One solution might be to allow the user to write some kind of compiler
+extension or declaration. This approach is not ideal, since it might
+result in duplicated information, or require the user to know more than
+they want to about the type system.
+
+Instead, this function can be written as a \emph{staged function} (or
+more accurately in our case, a \emph{staged method}). This is a function
+that runs at an earlier translation ``stage'', i.e. compile time, and
+instead of returning a result value returns code that will compute the
+result value when executed \cite{staging}.
+Here is the staged version of
+{\tt promote\_shape}\footnote{The {\tt @} denotes a macro invocation. At
+present, staged methods are implemented by a macro, but full integration
+into the language is planned.}:
+
+\begin{verbatim}
+@staged function promote_shape(s1::Tuple, s2::Tuple)
+    if length(s1) > length(s2)
+        quote return s1 end
+    else
+        quote return s2 end
+    end
+end
+\end{verbatim}
+
+The signature of this definition behaves exactly like any other method
+signature: the type annotations denote run-time types for which the
+definition is applicable. However, the body of the method will be invoked
+on the \emph{types} of the arguments rather than actual arguments, and the
+result of the body will be used to generate a new, more specialized
+definition. For example, given arguments of types
+{\tt (Int,Int)} and {\tt (Int,Int,Int)} the generated definition would be:
+
+\begin{verbatim}
+function promote_shape(s1::(Int,Int), s2::(Int,Int,Int))
+    return s2
+end
+\end{verbatim}
+
+Observe that the type of this function is trivial to infer.
+
+The staged function body runs as normal user code, so whatever definition
+of {\tt >} is visible will be used, and the compiler does not have to know
+how it behaves. Critically, the staged version of the function looks
+similar to the normal version, requiring only the insertion of {\tt quote}
+to mark expressions deferred to the next stage.
+
+In the case where a program is already statically-typeable, staged
+functions preserve that property. The types of the arguments to the
+staged function will be known at compile time, so the custom code
+generator can be invoked at compile time. Then the compiler may inline
+the result or emit a direct call to the generated code, as usual.
+
+Or, if the user does not require static compilation, the custom code
+generator can be invoked at run time. Its results are cached for each new
+combination of argument types, so compilation pauses are infrequent.
+
+Thus we have a language with the convenience of run-time-only semantics,
+which can be compiled just-in-time or ahead-of-time\footnote{The ahead-of-time
+compiler is not yet implemented.} with minimal performance differences,
+including custom code generation without the need for run-time {\tt eval}.
+Most importantly, functions with complex type behavior can be implemented
+in libraries without losing performance. Of course, ordinary Julia
+functions may also have complex type behavior, and it is up to the
+library designer to decide which functions should be staged.
+
+
+\subsection{Generic Programming}
+
+Support for generic programming is one of Julia's strengths.
+Code in dynamic languages is often thought of as generic by default, due
+to the absence of type restrictions, but this has its limits. First, many
+systems, such as Common LISP, support optional type declarations to
+improve performance. However, when this feature is used code usually
+becomes monomorphic as a result. Second, some cases of generic
+programming require the ability to specify behaviors that \emph{vary}
+based on types, for example initializing a variable with the right kind
+of container, or with an appropriate value for different numeric types.
+
+Julia has neither of these problems. The first is solved both by
+automatic specialization (which usually eliminates the need for
+performance-seeking declarations), and static parameters, which allow
+declarations containing type variables. The second is solved by the
+ability to define type traits. Multiple dispatch is also helpful, as it
+provides many ways to extend functions in the future.
+
+As an example, here is how {\tt max} can be written for any array:
+
+\begin{verbatim}
+function max{T<:Real}(A::AbstractArray{T})
+    v = typemin(T)
+    for x in A
+        if x > v
+            v = x
+        end
+    end
+    return v
+end
+\end{verbatim}
+
+At the same time, we could provide an alternate implementation that makes
+even fewer assumptions:
+
+\begin{verbatim}
+function max(A)
+    v = typemin(eltype(A))
+    ...
+end
+\end{verbatim}
+
+This allows any container to expose its element type by implementing
+{\tt eltype}. Here we do not have to know how the element type is
+determined. In fact, this version would work for arrays equally well
+as the first implementation, but we skip the opportunity to specify
+that it is only defined for arrays with {\tt Real} elements.
+We might also choose to call {\tt typemin} only if the container is
+empty, and otherwise initialize {\tt v} with the first element. Then
+{\tt max} would work on containers that do not implement {\tt eltype},
+as long as they are never empty.
+
+Flexible ad-hoc polymorphism plays a significant role in Julia's overall
+performance. In scientific computing especially, important special cases
+exist among the myriad datatypes that might appear in a program. Our
+dispatch model permits writing definitions for more specialized cases
+than most object-oriented languages.
+
+For example, we have {\tt Array}, the type of dense arrays, and
+{\tt SubArray}, an abstract array that references a contiguous subsection of
+another array. The BLAS and LAPACK libraries allow the caller to specify
+dimension strides, and we would like to call them for any arrays they
+can handle. To do this, we can define the following types:
+
+\begin{verbatim}
+typealias Matrix{T}                  Array{T,2}
+typealias StridedMatrix{T,A<:Array}  Union(Matrix{T}, SubArray{T,2,A})
+\end{verbatim}
+
+Then we can write definitions such as
+{\tt *(StridedMatrix\{T\},StridedMatrix\{T\})} for appropriate element types
+{\tt T}. This replaces the custom dispatch schemes often implemented in
+array programming systems.
+
+% todo more?
+
+\section{Evaluation}
+
+\subsection{Performance}
+
+We have compared the execution speed of Julia code to that of six other
+languages: C++, Python, MATLAB\textregistered, Octave, R, and JavaScript.
+Figure~\ref{mbr}
+\footnote{
+These measurements were done by Stefan Karpinski on a
+MacBook Pro with a 2.53GHz Intel Core 2 Duo CPU and 8GB of 1066MHz DDR3 RAM.
+
+Python 2.7.1, MATLAB\textregistered R2011a, Octave 3.4, R 2.14.2, V8 3.6.6.11
+C++ compiled by GCC 4.2.1, taking best timing from all optimization levels (-O0 through -O3).
+
+The Python implementations of rand\_mat\_stat and rand\_mat\_mul use NumPy (v1.5.1) functions; the rest are pure Python implementations.
+}
+shows timings for five scalar microbenchmarks, and two
+simple array benchmarks. All numbers are ratios relative to
+the time taken by C++. The first five tests do not
+reflect typical application performance in each environment; their only
+purpose is to compare the code executed for basic language
+constructs manipulating scalar quantities and referencing individual
+array elements.
+
+\begin{figure}
+\caption{Microbenchmark results (times relative to C++)}
+\label{mbr}
+\begin{center}
+\begin{tabular}{|l|r|r|r|r|r|r|}\hline
+test & Julia & Python & MATLAB\textregistered & Octave & R & JavaScript \\
+\hline \hline
+fib        & 1.97 & 31.47 & 1336.37  & 2383.80 & 225.23 & 1.55 \\
+\hline
+parse\_int & 1.44 & 16.50 &  815.19  & 6454.50 & 337.52 & 2.17 \\
+\hline
+quicksort  & 1.49 & 55.84 &  132.71  & 3127.50 & 713.77 & 4.11 \\
+\hline
+mandel     & 5.55 & 31.15 &   65.44  &  824.68 & 156.68 & 5.67 \\
+\hline
+pi\_sum    & 0.74 & 18.03 &    1.08  &  328.33 & 164.69 & 0.75 \\
+\hline
+rand\_mat\_stat & 3.37 & 39.34 & 11.64 & 54.54 &  22.07 & 8.12 \\
+\hline
+rand\_mat\_mul  & 1.00 &  1.18 &  0.70 &  1.65 &   8.64 & 41.79 \\
+\hline
+\end{tabular}
+\end{center}
+\end{figure}
+
+We can see why the standard libraries of these environments are
+developed in C and FORTRAN. MATLAB\textregistered has a JIT compiler
+that works quite well in some cases, but is inconsistent, and
+performs especially poorly on user-level function calls. The V8
+JavaScript JIT compiler's performance is impressive. Anomalously, both
+Julia and JavaScript seem to beat C++ on pi\_sum, but we have not yet
+discovered why this might be.
+
+The rand\_mat\_stat code manipulates many 5-by-5 matrices. Here the
+performance gaps close, but the arrays are not large enough for
+library time to dominate, so Julia's ability to specialize call sites
+wins the day (despite the fact that most of the array library functions
+involved are written in Julia itself).
+
+The rand\_mat\_mul code demonstrates a case where time spent in BLAS \cite{blas}
+dominates. MATLAB\textregistered gets its edge from using a
+multi-threaded BLAS (threading is available in the BLAS Julia uses,
+but it was disabled when these numbers were taken). R may not be using
+a well-tuned BLAS in this install; more efficient configurations are
+probably possible.
+JavaScript as typically deployed is not able to call the native BLAS code,
+but the V8 compiler's work is respectable here.
+
+
+Figure~\ref{tlbr}
+\footnote{
+Linux kernel 3.2.8 PC with 3.2GHz Intel Core i5 CPU, 4GB of RAM.
+Python 2.7.2.
+}
+compares Julia and Python on some
+more realistic ``task level'' benchmarks. The first test defines two
+data types (classes in Python), then forms (by appending) a heterogeneous
+array containing one million instances of each type. Then a method is called
+on each object in the array. On the first run, Julia incurs some compilation
+overhead and is about 8x faster. On future runs it is up to 16x faster.
+Although the method calls cannot be optimized, Julia is still able to
+gain an advantage likely due to use of native arithmetic for looping.
+
+\begin{figure}
+\caption{Task-level benchmark results (times in seconds)}
+\label{tlbr}
+\begin{center}
+\begin{tabular}{|l|r|r|r|r|}\hline
+test              & Python run 1 & Python fastest & Julia run 1 & Julia fastest\\
+\hline \hline
+list and dispatch & 3.60         & 3.12           & 0.43        & 0.19 \\
+\hline
+CSV parse         & 0.06         & 0.06           & 0.49        & 0.17 \\
+\hline
+\end{tabular}
+\end{center}
+\end{figure}
+
+The second test reads each line of a 100000-line, 7MB CSV file, and
+identifies and separates the comma-delimited fields. Python uses mature
+C libraries for these tasks, and so is 3x to 8x faster than Julia. All of
+the Julia library code is written in Julia, but this of course is no help
+to an end user who only cares about application performance.
+
+Julia is not yet able to cache generated native code, and so incurs a
+startup time of about two seconds to compile basic library functions.
+For some applications this latency is a barrier to deployment, and we plan
+to address it in the future.
+
+
+\subsection{Effectiveness of Specialization Heuristics}
+
+Given our implementation strategy, excessive compilation and corresponding
+memory use are potential performance concerns. In Figure~\ref{ncomp}
+we present the number of method compilations performed on startup, and
+after running a test suite. From the second row of the table to the bottom,
+each of three specialization heuristics is successively enabled to
+determine its effect on compiler workload. In the last table row, each
+method is compiled just once.
+
+The heuristics are able to elide about 12\% of compilations. This is
+not a large fraction, but it is satisfying given that the heuristics can
+be computed easily, and only by manipulating types. On average, each
+method is compiled about 2.5 times.
+
+\begin{figure}
+\caption{Number of methods compiled}
+\label{ncomp}
+\begin{center}
+\begin{tabular}{|l|r|r|}\hline
+    & at startup & after test suite \\
+\hline \hline
+no heuristics & 396 & 2245 \\
+\hline
+manual hints & 379 & 2160 \\
+\hline
+tuple widening & 357 & 1996 \\
+\hline
+vararg widening & 355 & 1970 \\
+\hline
+no specialization & 267 & 766 \\
+\hline
+\end{tabular}
+\end{center}
+\end{figure}
+
+Memory usage is not unreasonable for modern machines: on a 64-bit platform
+Julia uses about 50MB of memory on startup, and after loading several
+libraries and working for a while memory use tends to level off around
+150-200MB. Pointer-heavy data structures consume a lot of space on
+64-bit platforms. To mitigate this problem, we store ASTs and type
+information in a compact serialized format, and deserialize structures
+when the compiler needs them.
+
+
+\subsection{Effectiveness of Type Inference}
+
+It is interesting to count compiled expressions for which
+a concrete type can be inferred. In some sense, this tells us ``how close''
+Julia is to being statically typed, though in our case this is a property
+of both the language implementation and the standard library.
+In a run of our test suite, code was generated for 135375 expressions.
+Of those, 84127 (62\%) had a type more specific than {\tt Any}. Of those,
+80874 (96\%) had a concrete static type.
+
+This suggests that use of dynamic typing is fairly popular, even though
+we try to avoid it to some extent in the standard library. Still, more
+than half of our code is well-typed. The numbers also suggest that,
+despite careful use of a rich lattice, typing tends to be an all-or-nothing
+affair. But, it is difficult to estimate the effect of the 4\%
+abstractly-typed expressions on the other 96\%, not to mention the potential
+utility of abstract inferred types in code that was not actually
+compiled.
+
+These numbers are somewhat inaccurate, as they include dead code, and
+it may be the case that better-typed methods tend to be recompiled either
+more or less often, biasing the numbers.
+
+
+\subsection{Productivity}
+
+Our implementation of Julia consists of 11000 lines of C, 4000 lines of C++,
+and 3500 lines of Scheme (here we are not counting code in external
+libraries such as BLAS and LAPACK).
+Thus we have significantly less low-level code to maintain than most scripting
+languages. 
+Our standard library is roughly 25000 lines of Julia code.
+The standard library provides around 300 numerical functions
+of the sort found in all technical computing environments (arithmetic
+operators, reductions, sorting, etc.). We suspect that our library is
+one of the most compact implementations of this body of functionality.
+
+At this time, every contributor except the core developers is a ``new user''
+of Julia, having known of the language for no more than three months.
+Despite this, our function library has received several significant
+community contributions, and numerous smaller ones. We take this as
+encouraging evidence that Julia is productive and easy to learn.
+
+%~12000 lines extras
+%~3000 lines examples
+%~4000 lines of test code
+
 \section{Standard library}
 
-\section{Performance}
-
-
-\section{Ecosystem}
+\section{Community}
 
 
 % -------------------------------------------------------------
@@ -1342,22 +1847,153 @@ used, in some cases LLVM has been able to delete the whole thing.
 
 %This is the text of the appendix, if you need one.
 
-%\acks
-
-%Acknowledgments, if needed.
+\acks
+The Julia Community
 
 % We recommend abbrvnat bibliography style.
 
 \bibliographystyle{abbrvnat}
 
 % The bibliography should be embedded for final submission.
+%\bibliography{julia}
 
-\begin{thebibliography}{}
+\begin{thebibliography}{16}
 \softraggedright
 
-\bibitem[Smith et~al.(2009)Smith, Jones]{smith02}
-P. Q. Smith, and X. Y. Jones. ...reference text...
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bolz et~al.(2009)Bolz, Cuni, Fijalkowski, and Rigo]{pypyjit}
+C.~F. Bolz, A.~Cuni, M.~Fijalkowski, and A.~Rigo.
+\newblock Tracing the meta-level: Pypy's tracing jit compiler.
+\newblock In \emph{Proceedings of the 4th workshop on the Implementation,
+  Compilation, Optimization of Object-Oriented Languages and Programming
+  Systems}, ICOOOLPS '09, pages 18--25, New York, NY, USA, 2009. ACM.
+\newblock ISBN 978-1-60558-541-3.
+\newblock \doi{http://doi.acm.org/10.1145/1565824.1565827}.
+\newblock URL \url{http://doi.acm.org/10.1145/1565824.1565827}.
+
+\bibitem[Cardelli and Wegner(1985)]{boundedquant}
+L.~Cardelli and P.~Wegner.
+\newblock On understanding types, data abstraction, and polymorphism.
+\newblock \emph{ACM Comput. Surv.}, 17\penalty0 (4):\penalty0 471--523, Dec.
+  1985.
+\newblock ISSN 0360-0300.
+\newblock \doi{10.1145/6041.6042}.
+\newblock URL \url{http://doi.acm.org/10.1145/6041.6042}.
+
+\bibitem[Chambers(2005)]{dieselspec}
+C.~Chambers.
+\newblock The diesel language specification and rationale: Version 0.1.
+\newblock February 2005.
+
+\bibitem[Cousot and Cousot(1977)]{abstractinterp}
+P.~Cousot and R.~Cousot.
+\newblock Abstract interpretation: a unified lattice model for static analysis
+  of programs by construction or approximation of fixpoints.
+\newblock In \emph{Proceedings of the 4th ACM SIGACT-SIGPLAN symposium on
+  Principles of programming languages}, POPL '77, pages 238--252, New York, NY,
+  USA, 1977. ACM.
+\newblock \doi{10.1145/512950.512973}.
+\newblock URL \url{http://doi.acm.org/10.1145/512950.512973}.
+
+\bibitem[Cousot and Cousot(1992)]{widening}
+P.~Cousot and R.~Cousot.
+\newblock Comparing the galois connection and widening/narrowing approaches to
+  abstract interpretation.
+\newblock In M.~Bruynooghe and M.~Wirsing, editors, \emph{Programming Language
+  Implementation and Logic Programming}, volume 631 of \emph{Lecture Notes in
+  Computer Science}, pages 269--295. Springer Berlin / Heidelberg, 1992.
+\newblock ISBN 978-3-540-55844-6.
+
+\bibitem[DeMichiel and Gabriel(1987)]{closoverview}
+L.~DeMichiel and R.~Gabriel.
+\newblock The common lisp object system: An overview.
+\newblock In J.~Bézivin, J.-M. Hullot, P.~Cointe, and H.~Lieberman, editors,
+  \emph{ECOOP’ 87 European Conference on Object-Oriented Programming}, volume
+  276 of \emph{Lecture Notes in Computer Science}, pages 151--170. Springer
+  Berlin / Heidelberg, 1987.
+\newblock ISBN 978-3-540-18353-2.
+
+\bibitem[Gomez(1999)]{scilab}
+C.~Gomez, editor.
+\newblock \emph{Engineering and Scientific Computing With Scilab}.
+\newblock Birkh{\"a}user, 1999.
+
+\bibitem[Ihaka and Gentleman(1996)]{Rlang}
+R.~Ihaka and R.~Gentleman.
+\newblock R: A language for data analysis and graphics.
+\newblock \emph{Journal of Computational and Graphical Statistics}, 5:\penalty0
+  299--314, 1996.
+\newblock ISSN 1061-8600.
+
+\bibitem[J{\o}rring and Scherlis(1986)]{staging}
+U.~J{\o}rring and W.~L. Scherlis.
+\newblock Compilers and staging transformations.
+\newblock In \emph{Proceedings of the 13th ACM SIGACT-SIGPLAN symposium on
+  Principles of programming languages}, POPL '86, pages 86--96, New York, NY,
+  USA, 1986. ACM.
+\newblock \doi{10.1145/512644.512652}.
+\newblock URL \url{http://doi.acm.org/10.1145/512644.512652}.
+
+\bibitem[Lattner and Adve(2004)]{LLVM}
+C.~Lattner and V.~Adve.
+\newblock {LLVM: A Compilation Framework for Lifelong Program Analysis \&
+  Transformation}.
+\newblock In \emph{{Proceedings of the 2004 International Symposium on Code
+  Generation and Optimization (CGO'04)}}, Palo Alto, California, Mar 2004.
+
+\bibitem[Lawson et~al.(1979)Lawson, Hanson, Kincaid, and Krogh]{blas}
+C.~L. Lawson, R.~J. Hanson, D.~R. Kincaid, and F.~T. Krogh.
+\newblock Basic linear algebra subprograms for fortran usage.
+\newblock \emph{ACM Trans. Math. Softw.}, 5\penalty0 (3):\penalty0 308--323,
+  Sept. 1979.
+\newblock ISSN 0098-3500.
+\newblock \doi{10.1145/355841.355847}.
+\newblock URL \url{http://doi.acm.org/10.1145/355841.355847}.
+
+\bibitem[Mohnen(2002)]{graphfree}
+M.~Mohnen.
+\newblock A graph—free approach to data—flow analysis.
+\newblock In R.~Horspool, editor, \emph{Compiler Construction}, volume 2304 of
+  \emph{Lecture Notes in Computer Science}, pages 185--213. Springer Berlin /
+  Heidelberg, 2002.
+\newblock ISBN 978-3-540-43369-9.
+
+\bibitem[Murphy(1997)]{Octave}
+M.~Murphy.
+\newblock Octave: A free, high-level language for mathematics.
+\newblock \emph{Linux J.}, 1997, July 1997.
+\newblock ISSN 1075-3583.
+\newblock URL \url{http://dl.acm.org/citation.cfm?id=326876.326884}.
+
+\bibitem[Robin and Milner(1978)]{MLtypeinf}
+Robin and Milner.
+\newblock A theory of type polymorphism in programming.
+\newblock \emph{Journal of Computer and System Sciences}, 17\penalty0
+  (3):\penalty0 348 -- 375, 1978.
+\newblock ISSN 0022-0000.
+\newblock \doi{10.1016/0022-0000(78)90014-4}.
+\newblock URL
+  \url{http://www.sciencedirect.com/science/article/pii/0022000078900144}.
+
+\bibitem[Shalit(1996)]{dylanlang}
+A.~Shalit.
+\newblock \emph{The Dylan reference manual: the definitive guide to the new
+  object-oriented dynamic language}.
+\newblock Addison Wesley Longman Publishing Co., Inc., Redwood City, CA, USA,
+  1996.
+\newblock ISBN 0-201-44211-6.
+
+\bibitem[van~der Walt et~al.(2011)van~der Walt, Colbert, and Varoquaux]{numpy}
+S.~van~der Walt, S.~C. Colbert, and G.~Varoquaux.
+\newblock The numpy array: a structure for efficient numerical computation.
+\newblock \emph{CoRR}, abs/1102.1523, 2011.
 
 \end{thebibliography}
+
 
 \end{document}
