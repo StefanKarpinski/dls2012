@@ -12,6 +12,7 @@
 \usepackage{amsthm}
 \usepackage{algorithm}
 \usepackage{algorithmic}
+\usepackage{multicol}
 
 \begin{document}
 
@@ -659,8 +660,6 @@ intuitive concept of ``more specific''. In fact until this point
 summarized as the disjunction of the following rules ($A$ is more specific
 than $B$ if):
 
-\pagebreak
-
 \begin{enumerate}
 \item $A$ is a subtype of $B$
 \item $A$ is of the form {\tt T\{P\}} and $B$ is of the form {\tt S\{Q\}}, and
@@ -692,8 +691,9 @@ ambiguity, showing the user the computed type intersection so it is clear what
 definition is missing. For example:
 
 \begin{verbatim}
-Warning: New definition foo(Int,Number) is ambiguous with foo(Number,Int).
-        Make sure foo(Int,Int) is defined first.
+Warning: New definition foo(Int,Number) is 
+   ambiguous with foo(Number,Int). Make sure 
+   foo(Int,Int) is defined first.
 \end{verbatim}
 
 
@@ -1157,7 +1157,7 @@ to form the final result.
  \ELSE
   \STATE $sub \leftarrow A$
  \ENDIF
- \STATE $E \leftarrow conform(sup, superdecl(sub))$
+ \STATE $E \leftarrow conform(sup, super\_decl(sub))$
  \IF {$E$ contains parameters not in $formals(sub)$}
   \RETURN $\bot$
  \ENDIF
@@ -1217,7 +1217,7 @@ and we face the problem of mapping it to the family of the original argument
 type. To do this, we first call subroutine $conform$, which takes two types
 with the same structure and returns an environment $E$ mapping any
 type variables in one to their corresponding components in the other.
-$superdecl(t)$ returns the type template used by $t$ to instantiate its
+$super\_decl(t)$ returns the type template used by $t$ to instantiate its
 supertype. If all goes well, this tells us what parameters $sub$ would
 have to be instantiated with to have supertype $sup$. If, however, $E$
 contains type variables not controlled by $sub$, then there is no way
@@ -1370,7 +1370,8 @@ and returns the results
 
 \begin{verbatim}
 function promote{T,S}(x::T, y::S)
-    (convert(promote_type(T,S),x), convert(promote_type(T,S),y))
+    (convert(promote_type(T,S),x), 
+     convert(promote_type(T,S),y))
 end
 \end{verbatim}
 
@@ -1384,7 +1385,7 @@ function promote_type{T,S}(::Type{T}, ::Type{S})
     elseif applicable(promote_rule, S, T)
         return promote_rule(S,T)
     else
-        error("no promotion exists for ",T," and ",S)
+        error("no promotion exists")
     end
 end
 \end{verbatim}
@@ -1393,8 +1394,10 @@ end
 such definitions for the {\tt Complex128} type are:
 
 \begin{verbatim}
-promote_rule(::Type{Complex128}, ::Type{Float64}) = Complex128
-convert(::Type{Complex128}, x::Real) = complex128(x, 0)
+promote_rule(::Type{Complex128}, 
+             ::Type{Float64}) = Complex128
+convert(::Type{Complex128}, x::Real) = 
+        complex128(x, 0)
 \end{verbatim}
 
 With these definitions in place, a function may gain generic promotion
@@ -1519,7 +1522,8 @@ definition. For example, given arguments of types
 {\tt (Int,Int)} and {\tt (Int,Int,Int)} the generated definition would be:
 
 \begin{verbatim}
-function promote_shape(s1::(Int,Int), s2::(Int,Int,Int))
+function promote_shape(s1::(Int,Int), 
+                       s2::(Int,Int,Int))
     return s2
 end
 \end{verbatim}
@@ -1618,12 +1622,13 @@ dimension strides, and we would like to call them for any arrays they
 can handle. To do this, we can define the following types:
 
 \begin{verbatim}
-typealias Matrix{T}                  Array{T,2}
-typealias StridedMatrix{T,A<:Array}  Union(Matrix{T}, SubArray{T,2,A})
+typealias Matrix{T}  Array{T,2}
+typealias StridedMatrix{T,A<:Array}  
+          Union(Matrix{T}, SubArray{T,2,A})
 \end{verbatim}
 
 Then we can write definitions such as
-{\tt *(StridedMatrix\{T\},StridedMatrix\{T\})} for appropriate element types
+{\tt *(StridedMatrix\{T\},} {\tt StridedMatrix\{T\})} for appropriate element types
 {\tt T}. This replaces the custom dispatch schemes often implemented in
 array programming systems.
 
@@ -1653,10 +1658,11 @@ purpose is to compare the code executed for basic language
 constructs manipulating scalar quantities and referencing individual
 array elements.
 
-\begin{figure}
+\begin{figure*}
 \caption{Microbenchmark results (times relative to C++)}
 \label{mbr}
 \begin{center}
+
 \begin{tabular}{|l|r|r|r|r|r|r|}\hline
 test & Julia & Python & MATLAB\textregistered & Octave & R & JavaScript \\
 \hline \hline
@@ -1675,8 +1681,22 @@ rand\_mat\_stat & 3.37 & 39.34 & 11.64 & 54.54 &  22.07 & 8.12 \\
 rand\_mat\_mul  & 1.00 &  1.18 &  0.70 &  1.65 &   8.64 & 41.79 \\
 \hline
 \end{tabular}
+
+\vspace{0.5cm}
+
+\caption{Task-level benchmark results (times in seconds)}
+\begin{tabular}{|l|r|r|r|r|}\hline
+test              & Python run 1 & Python fastest & Julia run 1 & Julia fastest\\
+\hline \hline
+list and dispatch & 3.60         & 3.12           & 0.43        & 0.19 \\
+\hline
+CSV parse         & 0.06         & 0.06           & 0.49        & 0.17 \\
+\hline
+\end{tabular}
+
 \end{center}
-\end{figure}
+\end{figure*}
+
 
 We can see why the standard libraries of these environments are
 developed in C and FORTRAN. MATLAB\textregistered has a JIT compiler
@@ -1701,8 +1721,7 @@ probably possible.
 JavaScript as typically deployed is not able to call the native BLAS code,
 but the V8 compiler's work is respectable here.
 
-
-Figure~\ref{tlbr}
+Figure~\ref{mbr}
 \footnote{
 Linux kernel 3.2.8 PC with 3.2GHz Intel Core i5 CPU, 4GB of RAM.
 Python 2.7.2.
@@ -1715,21 +1734,6 @@ on each object in the array. On the first run, Julia incurs some compilation
 overhead and is about 8x faster. On future runs it is up to 16x faster.
 Although the method calls cannot be optimized, Julia is still able to
 gain an advantage likely due to use of native arithmetic for looping.
-
-\begin{figure}
-\caption{Task-level benchmark results (times in seconds)}
-\label{tlbr}
-\begin{center}
-\begin{tabular}{|l|r|r|r|r|}\hline
-test              & Python run 1 & Python fastest & Julia run 1 & Julia fastest\\
-\hline \hline
-list and dispatch & 3.60         & 3.12           & 0.43        & 0.19 \\
-\hline
-CSV parse         & 0.06         & 0.06           & 0.49        & 0.17 \\
-\hline
-\end{tabular}
-\end{center}
-\end{figure}
 
 The second test reads each line of a 100000-line, 7MB CSV file, and
 identifies and separates the comma-delimited fields. Python uses mature
@@ -1874,8 +1878,8 @@ C.~F. Bolz, A.~Cuni, M.~Fijalkowski, and A.~Rigo.
   Compilation, Optimization of Object-Oriented Languages and Programming
   Systems}, ICOOOLPS '09, pages 18--25, New York, NY, USA, 2009. ACM.
 \newblock ISBN 978-1-60558-541-3.
-\newblock \doi{http://doi.acm.org/10.1145/1565824.1565827}.
-\newblock URL \url{http://doi.acm.org/10.1145/1565824.1565827}.
+%\newblock \doi{http://doi.acm.org/10.1145/1565824.1565827}.
+%\newblock URL \url{http://doi.acm.org/10.1145/1565824.1565827}.
 
 \bibitem[Cardelli and Wegner(1985)]{boundedquant}
 L.~Cardelli and P.~Wegner.
@@ -1883,8 +1887,8 @@ L.~Cardelli and P.~Wegner.
 \newblock \emph{ACM Comput. Surv.}, 17\penalty0 (4):\penalty0 471--523, Dec.
   1985.
 \newblock ISSN 0360-0300.
-\newblock \doi{10.1145/6041.6042}.
-\newblock URL \url{http://doi.acm.org/10.1145/6041.6042}.
+%\newblock \doi{10.1145/6041.6042}.
+%\newblock URL \url{http://doi.acm.org/10.1145/6041.6042}.
 
 \bibitem[Chambers(2005)]{dieselspec}
 C.~Chambers.
@@ -1898,8 +1902,8 @@ P.~Cousot and R.~Cousot.
 \newblock In \emph{Proceedings of the 4th ACM SIGACT-SIGPLAN symposium on
   Principles of programming languages}, POPL '77, pages 238--252, New York, NY,
   USA, 1977. ACM.
-\newblock \doi{10.1145/512950.512973}.
-\newblock URL \url{http://doi.acm.org/10.1145/512950.512973}.
+%\newblock \doi{10.1145/512950.512973}.
+%\newblock URL \url{http://doi.acm.org/10.1145/512950.512973}.
 
 \bibitem[Cousot and Cousot(1992)]{widening}
 P.~Cousot and R.~Cousot.
@@ -1937,8 +1941,8 @@ U.~J{\o}rring and W.~L. Scherlis.
 \newblock In \emph{Proceedings of the 13th ACM SIGACT-SIGPLAN symposium on
   Principles of programming languages}, POPL '86, pages 86--96, New York, NY,
   USA, 1986. ACM.
-\newblock \doi{10.1145/512644.512652}.
-\newblock URL \url{http://doi.acm.org/10.1145/512644.512652}.
+%\newblock \doi{10.1145/512644.512652}.
+%\newblock URL \url{http://doi.acm.org/10.1145/512644.512652}.
 
 \bibitem[Lattner and Adve(2004)]{LLVM}
 C.~Lattner and V.~Adve.
@@ -1953,8 +1957,8 @@ C.~L. Lawson, R.~J. Hanson, D.~R. Kincaid, and F.~T. Krogh.
 \newblock \emph{ACM Trans. Math. Softw.}, 5\penalty0 (3):\penalty0 308--323,
   Sept. 1979.
 \newblock ISSN 0098-3500.
-\newblock \doi{10.1145/355841.355847}.
-\newblock URL \url{http://doi.acm.org/10.1145/355841.355847}.
+%\newblock \doi{10.1145/355841.355847}.
+%\newblock URL \url{http://doi.acm.org/10.1145/355841.355847}.
 
 \bibitem[Mohnen(2002)]{graphfree}
 M.~Mohnen.
@@ -1969,7 +1973,7 @@ M.~Murphy.
 \newblock Octave: A free, high-level language for mathematics.
 \newblock \emph{Linux J.}, 1997, July 1997.
 \newblock ISSN 1075-3583.
-\newblock URL \url{http://dl.acm.org/citation.cfm?id=326876.326884}.
+%\newblock URL \url{http://dl.acm.org/citation.cfm?id=326876.326884}.
 
 \bibitem[Robin and Milner(1978)]{MLtypeinf}
 Robin and Milner.
@@ -1977,9 +1981,9 @@ Robin and Milner.
 \newblock \emph{Journal of Computer and System Sciences}, 17\penalty0
   (3):\penalty0 348 -- 375, 1978.
 \newblock ISSN 0022-0000.
-\newblock \doi{10.1016/0022-0000(78)90014-4}.
-\newblock URL
-  \url{http://www.sciencedirect.com/science/article/pii/0022000078900144}.
+%\newblock \doi{10.1016/0022-0000(78)90014-4}.
+%\newblock URL
+%  \url{http://www.sciencedirect.com/science/article/pii/0022000078900144}.
 
 \bibitem[Shalit(1996)]{dylanlang}
 A.~Shalit.
