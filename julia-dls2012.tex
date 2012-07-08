@@ -158,19 +158,20 @@ library code, and modify it or imitate it for their own purposes.
 %% obtaining the highest performance. Julia's type inference and JIT compiler
 %% make it easier to generate efficient code at a more abstract, symbolic level.
 
-Many of the ideas explored here are not exclusively applicable to technical
-computing, but we have chosen to target that application area for several
-reasons. First, technical computing has unique concerns that can be
-especially awkward or inefficient to handle in existing dynamic languages.
-Examples include the need for a wide variety of numeric types, and the need for
-efficient arrays of those types. Second, the performance
-of high-level technical computing languages has begun to seriously lag behind
-that of more mainstream languages (notably JavaScript), creating a present
-need for attempts to improve the situation.
-General-purpose languages like Java or perhaps even JavaScript could
-be used for technical computing, but we feel the community will continue to
-prefer environments that cater to its syntactic needs, and are able to
-prioritize issues of numerical accuracy and performance.
+%%% NOTE: nominated for deletion by JWB
+%% Many of the ideas explored here are not exclusively applicable to technical
+%% computing, but we have chosen to target that application area for several
+%% reasons. First, technical computing has unique concerns that can be
+%% especially awkward or inefficient to handle in existing dynamic languages.
+%% Examples include the need for a wide variety of numeric types, and the need for
+%% efficient arrays of those types. Second, the performance
+%% of high-level technical computing languages has begun to seriously lag behind
+%% that of more mainstream languages (notably JavaScript), creating a present
+%% need for attempts to improve the situation.
+%% General-purpose languages like Java or perhaps even JavaScript could
+%% be used for technical computing, but we feel the community will continue to
+%% prefer environments that cater to its syntactic needs, and are able to
+%% prioritize issues of numerical accuracy and performance.
 
 %% my parallelism principles:
 %% 1. People won't use a language *just* to get parallelism. They will
@@ -273,26 +274,27 @@ are those of a standard imperative language: statements are executed in order,
 with function arguments evaluated eagerly. All values are conceptually
 references, and are passed by reference as in LISP.
 
-Julia's core evaluation semantics are particularly bland, because all of the
-interesting work has been moved to the generic function system. Every
-function definition is actually a definition of a method for some generic
-function for some combination of argument types. The ``feel'' of the language
-derives mostly from the fact that every function call is dynamically
-dispatched to the most specific matching method definition, based on the
-types of all arguments.
+%% Julia's core evaluation semantics are particularly bland, because all of the
+%% interesting work has been moved to the generic function system. Every
+%% function definition is actually a definition of a method for some generic
+%% function for some combination of argument types. The ``feel'' of the language
+%% derives mostly from the fact that every function call is dynamically
+%% dispatched to the most specific matching method definition, based on the
+%% types of all arguments.
 
 
 \subsection{Types}
 
 Julia uses dynamic typing, which means that the universal type {\tt Any}
 is the only static type. Our design philosophy is that types should be
-quite powerful and expressive, but nearly invisible to the user. Julia
-programmers must be able to ignore the type system completely if they do
-not wish to make explicit use of its functionality.
+quite expressive, but nearly invisible to the user. Julia
+programmers must be able to ignore the type system if they do
+not wish to make explicit use of it.
 
 Julia treats types as symbolic descriptions of sets of values. Every value has
 a unique, immutable, run-time implementation type. Objects carry type tags, and
-types themselves are Julia objects that can be manipulated at run time.
+types themselves are Julia objects that can be created and inspected
+at run time.
 Julia has five kinds of types:
 
 \begin{enumerate}
@@ -323,7 +325,7 @@ is based on types rather than field lookup, so whether a value is of a bits
 type or composite type is a representation detail that is generally
 invisible.
 
-As an extra complexity, tuple types may end in a special {\tt ...} type that
+Tuple types may end in a special {\tt ...} type that
 indicates any number of elements may be added. This is used to express the
 types of variadic methods. For example the type {\tt (String, Int...)}
 indicates a tuple where the first element is a String and any number of
@@ -340,11 +342,11 @@ involved were first defined. For example, we could use
 there is no {\tt Index} type inherited by both constituents. Lastly,
 union types can be used to declare methods applicable to multiple types.
 
-The key to the utility of Julia's type system is its implementation of two
-important functions: the subtype predicate, which determines whether one type
-is a subset of another, and type intersection, which computes a type that is a
-subtype of two given types. These functions form the basis of method dispatch
-logic and type inference.
+%% The key to the utility of Julia's type system is its implementation of two
+%% important functions: the subtype predicate, which determines whether one type
+%% is a subset of another, and type intersection, which computes a type that is a
+%% subtype of two given types. These functions form the basis of method dispatch
+%% logic and type inference.
 
 \subsection{Notational Conveniences}
 
@@ -401,12 +403,6 @@ code does not need to be modified.
 % pattern emerges where ``user code'' has no types, and the more types
 % written in code the more ``library-like'' it becomes (cite scala?)
 
-
-\subsection{Syntax}
-
-Julia has a simple block-structured syntax, with notation for type
-and method definition, control flow, and special syntax for important
-operators.
 
 \subsection{Method Definition}
 Method definitions have a long (multi-line) form and a short form.
@@ -474,27 +470,18 @@ writing ``diagonal'' constraints as in the example above. Such diagonal
 constraints significantly complicate the type lattice operators.
 
 
-\subsection{Control Flow}
+\subsection{Iteration}
+
+A {\tt for} loop is translated to a while loop with method calls according
+to an iteration interface ({\tt start}, {\tt done}, and {\tt next}).
 
 \begin{verbatim}
-if condition1 || (a && b)
-    # single line comment
-elseif !condition2
-else
-    # otherwise
-end
-
-while condition
-    # body
-end
-
 for i in range
     # body
 end
 \end{verbatim}
 
-A {\tt for} loop is translated to a while loop with method calls according
-to the iteration interface ({\tt start}, {\tt done}, and {\tt next}):
+Becomes:
 
 \begin{verbatim}
 state = start(range)
@@ -521,26 +508,27 @@ surface syntax     & lowered form \\\hline \hline
 {\tt [a b; c d]}   & {\tt hvcat((2,2), a, b, c, d)}\\\hline
 \end{tabular}
 
-\subsection{Type Definition}
+%%% NOTE: nominated for deletion by JWB
+%% \subsection{Type Definition}
 
-\begin{verbatim}
-# abstract type
-abstract Complex{T<:Real} <: Number
+%% \begin{verbatim}
+%% # abstract type
+%% abstract Complex{T<:Real} <: Number
 
-# composite type
-type ComplexPair{T<:Real} <: Complex{T}
-    re::T
-    im::T
-end
+%% # composite type
+%% type ComplexPair{T<:Real} <: Complex{T}
+%%     re::T
+%%     im::T
+%% end
 
-# bits type
-bitstype 128 Complex128 <: Complex{Float64}
+%% # bits type
+%% bitstype 128 Complex128 <: Complex{Float64}
 
-# type alias
-typealias TwoOf{T} (T,T)
-\end{verbatim}
+%% # type alias
+%% typealias TwoOf{T} (T,T)
+%% \end{verbatim}
 
-\subsubsection{Constructors}
+\subsection{Constructors}
 
 Composite types are applied as functions to construct instances.
 The default constructor accepts values for each field as arguments.
@@ -571,6 +559,7 @@ lowest terms.
 
 \subsection{Generic Functions}
 
+% TODO:
 % talk about how this is a sneaky way to collect type information. since
 % signatures specify dispatch behavior they are not redundant information.
 
@@ -583,8 +572,8 @@ notably CLOS \cite{closoverview} and Dylan \cite{dylanlang}.
 Julia is distinguished from these in that
 it uses generic functions as its primary abstraction mechanism, putting it in
 the company of research languages like Diesel \cite{dieselspec}. Aside
-from being practical for highly polymorphic mathematical styles of programming,
-as we will discuss, this design is satisfying also because it permits
+from being practical for mathematical styles of programming,
+this design is satisfying also because it permits
 expression of most of the popular patterns of object-oriented programming,
 while leaving the core language with fewer distinct features.
 
@@ -638,6 +627,9 @@ more elegant and convenient than systems where enums or special constants must
 be used for this purpose, or where the type information is implicit
 (e.g. through return-type overloading).
 
+% TODO: note that this, together with appropriate specialization logic,
+% gives the benefits of static parameters without bothering the user.
+
 \subsection{Method Sorting and Ambiguity}
 Methods are stored sorted by specificity, so the first matching method
 (as determined by the subtype predicate) is always the correct one to invoke.
@@ -690,23 +682,24 @@ Warning: New definition foo(Int,Number) is
 \end{verbatim}
 
 
-\subsection{Intrinsic Functions}
+%%% NOTE: nominated for deletion by JWB
+%% \subsection{Intrinsic Functions}
 
-The run-time system contains a small number of primitive functions for tasks
-like determining the type of a value, accessing fields of composite types, and
-constructing values of each of the supported kinds of concrete types. There are
-also arithmetic intrinsics corresponding to machine-level operations like
-fixed-width integer addition, bit shifts, etc. These intrinsic functions are
-implemented only in the code generator and do not have callable entry points.
-They operate on bit strings, which are not first class values but can be
-converted to and from Julia bits types via boxing and unboxing operations.
+%% The run-time system contains a small number of primitive functions for tasks
+%% like determining the type of a value, accessing fields of composite types, and
+%% constructing values of each of the supported kinds of concrete types. There are
+%% also arithmetic intrinsics corresponding to machine-level operations like
+%% fixed-width integer addition, bit shifts, etc. These intrinsic functions are
+%% implemented only in the code generator and do not have callable entry points.
+%% They operate on bit strings, which are not first class values but can be
+%% converted to and from Julia bits types via boxing and unboxing operations.
 
-In our implementation, the core system also provides functions for constructing
-arrays and accessing array elements. Although this is not strictly necessary,
-we did not want to expose unsafe memory operations (e.g. load and store
-primitives) in the language. In an earlier implementation, the core system
-provided a bounds-checked {\tt Buffer} abstraction, but having both this type
-and the user-level {\tt Array} type proved inconvenient and confusing.
+%% In our implementation, the core system also provides functions for constructing
+%% arrays and accessing array elements. Although this is not strictly necessary,
+%% we did not want to expose unsafe memory operations (e.g. load and store
+%% primitives) in the language. In an earlier implementation, the core system
+%% provided a bounds-checked {\tt Buffer} abstraction, but having both this type
+%% and the user-level {\tt Array} type proved inconvenient and confusing.
 
 
 \subsection{Design Limitations}
@@ -896,8 +889,8 @@ the recursive inference process may stop immediately.
 \STATE $n \leftarrow length(F)$
 \STATE $W \leftarrow \{1\}$ \COMMENT {set of program counters}
 \STATE $P_r \leftarrow \emptyset$ \COMMENT {statements that recur}
-\STATE $\forall i, \Gamma[1][V[i]] \leftarrow \text{Undef}$
-\STATE $\forall i, \Gamma[1][V_{a}[i]] \leftarrow A[i]$
+\STATE $\forall v \in V, \Gamma[1][v] \leftarrow \text{Undef}$
+\STATE $\forall i, \Gamma[1][V_{a}[i]] \leftarrow A[i]$  \COMMENT {type environment for statement 1}
 \WHILE{$W \neq \emptyset$}
  \STATE $p \leftarrow \operatorname{choose}(W)$
  \REPEAT
@@ -992,7 +985,7 @@ that they might run faster. One valuable improvement is
 to attempt full evaluation of branch conditions, and remove branches
 with constant conditions.
 
-\subsubsection{Type Transfer Functions}
+% \subsubsection{Type Transfer Functions}
 
 %todo ?
 
@@ -1293,7 +1286,8 @@ or being passed to an unknown function).
 
 The code generator recognizes calls to key built-in and intrinsic functions,
 and replaces them with efficient in-line code where possible. For example,
-the {\tt is} function yields a pointer comparison, and {\tt typeof} might
+the {\tt is} function on mutable arguments yields a pointer comparison, and
+{\tt typeof} might
 yield a constant pointer value if the type of its argument is known.
 Calls known to match single methods generate code to call the correct
 method directly, skipping the dispatch process.
@@ -1850,16 +1844,13 @@ It has attracted 600 mailing list subscribers, 1500 github followers,
 has been implemented for emacs, vim, and textmate.
 Github recognizes Julia as the language of source files ending in
 {\tt .jl}, and can syntax highlight Julia code listings.
-We are currently \#80 in github's language popularity ranking, up
-from \#89 a month ago.
+We are currently \#79 in github's language popularity ranking.
 
 Several community projects are underway: two plotting packages,
 interfaces to arbitrary-precision arithmetic library GMP,
 bit arrays, linear programming, image processing, polynomials,
 GPU code generation, a statistics library, and a web-based interactive
-environment. A package management framework will soon be in place,
-making it easy for developers to contribute packages and for users to
-use packages.
+environment. A package management framework will soon be in place.
 
 %So far we detect enthusiasm for the ability to use declarative
 %information and metaprogramming without giving up convenience for
