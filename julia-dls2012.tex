@@ -41,7 +41,7 @@
 
 \maketitle
 \begin{abstract}
-  Dynamic programming languages have become popular for scientific
+  Dynamic languages have become popular for scientific
   computing. They are generally considered highly productive, but
   lacking in performance. This paper presents Julia, a new dynamic
   language for technical computing, designed for performance from the
@@ -83,18 +83,12 @@ should embrace the emerging preference for ``scripting'' style languages,
 and ask how these systems can better provide for the future of technical
 computing.
 
-The ``two-tier'' architecture, for example, writing an application in
-Python with performance-critical code written in C, seems like a good
-way to balance performance and productivity. However, there are many
-reasons to move away from this architecture \footnote{To be clear,
-  applications can and often do consist of code in many languages.  It
-  is perfectly reasonable of course to call existing well understood,
-  accurate, and well performing libraries.  Working codes adhere to
-  the old saying, ``If it ain't broke, don't fix it''. It is also
-  reasonable is to pick several languages, based on the user's sense
-  of a good expressive match to the application.  The problem we are
-  exploring is the common switch to another language made only for
-  reasons of performance.}.  Naturally, it would be preferable to
+The ``two-tier'' architecture --- for example writing an application in
+Python with performance-critical code written in C --- can be a good
+way to balance performance and productivity, and works well for some
+applications. However, there are
+reasons to move away from this architecture.
+Naturally, it would be preferable to
 write compute-intensive code in a more productive language as well,
 especially when developing parallel algorithms, where code complexity
 can increase dramatically.  Programming in two languages can also be
@@ -215,7 +209,7 @@ and language design.
 \section{Language Design}
 
 
-Static typing appears to have many advantages from an objective, theoretical
+Static typing appears to have many advantages from a theoretical
 standpoint: earlier error detection, generally better performance, and
 support for more accurate tools are often cited in this context.
 Nevertheless, developers are ``voting with their code'' for languages that
@@ -232,9 +226,7 @@ some of the distractions of build systems and configuration files.
 \item A universal {\tt Any} type as the only true static type,
 allowing the issue of static types to be ignored when desired.
 \item Never rejecting code that is syntactically well-formed.
-\item Behavior that depends only on run-time types (unlike, for example, C++,
-where virtual methods are dispatched by run-time type and function overloads
-are dispatched by static type).
+\item Behavior that depends only on run-time types (i.e. no static overloading).
 \end{itemize}
 
 We explicitly forgo the following features in the interest of preserving
@@ -366,44 +358,45 @@ to a Float64 Array of any rank, and {\tt Array\{Float64,2\}} refers to a
 This design also makes it easy to add parameters to types later; existing
 code does not need to be modified.
 
-\subsection{Standard Type Hierarchy}
-Here we present an excerpt from the standard library, showing how a few
-important types are defined. The fields of composite types are redacted for
-the sake of brevity. The {\tt <:} syntax indicates a declared subtype
-relation.
+%%% NOTE: nominated for deletion by JWB
+%% \subsection{Standard Type Hierarchy}
+%% Here we present an excerpt from the standard library, showing how a few
+%% important types are defined. The fields of composite types are redacted for
+%% the sake of brevity. The {\tt <:} syntax indicates a declared subtype
+%% relation.
 
-\begin{verbatim}
-abstract Type{T}
-type AbstractKind  <: Type; end
-type BitsKind      <: Type; end
-type CompositeKind <: Type; end
-type UnionKind     <: Type; end
+%% \begin{verbatim}
+%% abstract Type{T}
+%% type AbstractKind  <: Type; end
+%% type BitsKind      <: Type; end
+%% type CompositeKind <: Type; end
+%% type UnionKind     <: Type; end
 
-abstract Number
-abstract Real     <: Number
-abstract Float    <: Real
-abstract Integer  <: Real
-abstract Signed   <: Integer
-abstract Unsigned <: Integer
+%% abstract Number
+%% abstract Real     <: Number
+%% abstract Float    <: Real
+%% abstract Integer  <: Real
+%% abstract Signed   <: Integer
+%% abstract Unsigned <: Integer
 
-bitstype 32 Float32 <: Float
-bitstype 64 Float64 <: Float
+%% bitstype 32 Float32 <: Float
+%% bitstype 64 Float64 <: Float
 
-bitstype 8  Bool <: Integer
-bitstype 32 Char <: Integer
+%% bitstype 8  Bool <: Integer
+%% bitstype 32 Char <: Integer
 
-bitstype 8  Int8   <: Signed
-bitstype 8  Uint8  <: Unsigned
-bitstype 16 Int16  <: Signed
-bitstype 16 Uint16 <: Unsigned
-bitstype 32 Int32  <: Signed
-bitstype 32 Uint32 <: Unsigned
-bitstype 64 Int64  <: Signed
-bitstype 64 Uint64 <: Unsigned
+%% bitstype 8  Int8   <: Signed
+%% bitstype 8  Uint8  <: Unsigned
+%% bitstype 16 Int16  <: Signed
+%% bitstype 16 Uint16 <: Unsigned
+%% bitstype 32 Int32  <: Signed
+%% bitstype 32 Uint32 <: Unsigned
+%% bitstype 64 Int64  <: Signed
+%% bitstype 64 Uint64 <: Unsigned
 
-abstract AbstractArray{T,N}
-type Array{T,N} <: AbstractArray{T,N}; end
-\end{verbatim}
+%% abstract AbstractArray{T,N}
+%% type Array{T,N} <: AbstractArray{T,N}; end
+%% \end{verbatim}
 
 % pattern emerges where ``user code'' has no types, and the more types
 % written in code the more ``library-like'' it becomes (cite scala?)
@@ -754,8 +747,6 @@ dynamic languages.
 
 \section{Implementation}
 
-\section{Implementation}
-
 \subsection{Method Dispatch}
 
 Much of the implementation is organized around method dispatch. The dispatch
@@ -802,7 +793,7 @@ original method declaration actually specified a type like
 {\tt Type\{Type\{Int32\}\}}).
 
 The next heuristic avoids specializing methods for tuple types of every length.
-Tuple types are cached as the intersubsection of the declared type of the method
+Tuple types are cached as the intersection of the declared type of the method
 slot with the generic tuple type {\tt (Any...)}. This makes the resulting cache
 entry valid for any tuple argument, again unless the method declaration
 contained a more specific tuple type. Note that all of these heuristics require
@@ -816,7 +807,7 @@ function. The ``capping'' involves replacing the last argument with a
 {\tt ...} type. Ideally, we want to form the biggest type that's not a
 supertype of any other method signatures. However, this is not always possible
 and the capped type might conflict with another signature. To deal with this
-case, we find all non-empty intersubsections of the capped type with other
+case, we find all non-empty intersections of the capped type with other
 signatures, and add dummy cache entries for them. Hitting one of these entries
 alerts the system that the arguments under consideration are not really in the
 cache. Without the dummy entries, some arguments might incorrectly match the
@@ -898,47 +889,47 @@ the recursive inference process may stop immediately.
 \caption{Infer function return type}
 \label{alg1}
 \begin{algorithmic}
-\REQUIRE function $F$, argument type tuple $A$, abstract execution stack $T$
-\ENSURE result type $T.R$
+\REQUIRE function $F$, argument type tuple $A$, abstract execution stack $S$
+\ENSURE result type $S.R$
 \STATE $V \leftarrow$ set of all locally-bound names
 \STATE $V_{a} \leftarrow$ argument names
 \STATE $n \leftarrow length(F)$
 \STATE $W \leftarrow \{1\}$ \COMMENT {set of program counters}
 \STATE $P_r \leftarrow \emptyset$ \COMMENT {statements that recur}
-\STATE $\forall i, S[1,V[i]] \leftarrow \text{Undef}$
-\STATE $\forall i, S[1,V_{a}[i]] \leftarrow A[i]$
+\STATE $\forall i, \Gamma[1][V[i]] \leftarrow \text{Undef}$
+\STATE $\forall i, \Gamma[1][V_{a}[i]] \leftarrow A[i]$
 \WHILE{$W \neq \emptyset$}
  \STATE $p \leftarrow \operatorname{choose}(W)$
  \REPEAT
   \STATE $W \leftarrow W - p$
-  \STATE $new \leftarrow interpret(F[p],S[p],T)$
-  \IF {$T.rec$}
+  \STATE $new \leftarrow interpret(F[p],\Gamma[p],S)$
+  \IF {$S.rec$}
    \STATE $P_r \leftarrow P_r \cup \{p\}$
-   \STATE $T.rec \leftarrow \text{false}$
+   \STATE $S.rec \leftarrow \text{false}$
   \ENDIF
-  \STATE $p\prime \leftarrow p+1$
+  \STATE $p^{\prime} \leftarrow p+1$
   \IF{$F[p] = $\texttt{(goto l)}}
-   \STATE $p\prime \leftarrow l$
+   \STATE $p^{\prime} \leftarrow l$
   \ELSIF{$F[p] = $\texttt{(gotoif cond l)}}
-   \IF {\NOT $new \leq S[l]$}
+   \IF {\NOT $new \leq \Gamma[l]$}
     \STATE $W \leftarrow W \cup \{l\}$
-    \STATE $S[l] \leftarrow S[l] \sqcup new$
+    \STATE $\Gamma[l] \leftarrow \Gamma[l] \sqcup new$
    \ENDIF
   \ELSIF{$F[p] = $\texttt{(return e)}}
-   \STATE $p\prime \leftarrow n+1$
-   \STATE $r \leftarrow eval(e,S[p],T)$
-   \IF {\NOT $r \leq T.R$}
-    \STATE $T.R \leftarrow T.R \sqcup r$
+   \STATE $p^{\prime} \leftarrow n+1$
+   \STATE $r \leftarrow eval(e,\Gamma[p],S)$
+   \IF {\NOT $r \leq S.R$}
+    \STATE $S.R \leftarrow S.R \sqcup r$
     \STATE $W \leftarrow W \cup P_r$
    \ENDIF
   \ENDIF
-  \IF{$p\prime \leq n$ \AND \NOT $new \leq S[p\prime]$}
-   \STATE $S[p\prime] \leftarrow S[p\prime] \sqcup new$
-   \STATE $p \leftarrow p\prime$
+  \IF{$p^{\prime} \leq n$ \AND \NOT $new \leq \Gamma[p^{\prime}]$}
+   \STATE $\Gamma[p^{\prime}] \leftarrow \Gamma[p^{\prime}] \sqcup new$
+   \STATE $p \leftarrow p^{\prime}$
   \ENDIF
- \UNTIL{$p\prime = n+1$}
+ \UNTIL{$p^{\prime} = n+1$}
 \ENDWHILE
-\STATE {$T.rec \leftarrow P_r \neq \emptyset$}
+\STATE {$S.rec \leftarrow P_r \neq \emptyset$}
 \end{algorithmic}
 \end{algorithm}
 
@@ -987,11 +978,11 @@ converges.
  \ENDIF
  \STATE $f \leftarrow tail(f)$
 \ENDWHILE
-\STATE $T \leftarrow extend(S, Frame(F=F,A=A,R=R,rec=\text{false}))$
-\STATE invoke Algorithm~\ref{alg1} on $F,A,T$
-\STATE $recall(F,A) \leftarrow T.R$
-\STATE $incomplete(F,A) \leftarrow (T.rec \land \neg(R=T.R))$
-\RETURN $T.R$
+\STATE $S^{\prime} \leftarrow extend(S, Frame(F,A,R,rec=\text{false}))$
+\STATE invoke Algorithm~\ref{alg1} on $F,A,S^{\prime}$
+\STATE $recall(F,A) \leftarrow S^{\prime}.R$
+\STATE $incomplete(F,A) \leftarrow (S^{\prime}.rec \land \neg(R=S^{\prime}.R))$
+\RETURN $S^{\prime}.R$
 \end{algorithmic}
 \end{algorithm}
 
@@ -1011,7 +1002,7 @@ Our type lattice is complicated by the presence of type parameters, unions,
 and diagonal type constraints in method signatures. Fortunately, for our
 purposes only the $\leq$ ($subtype$) relation needs to be computed accurately,
 as it bears final responsibility for whether a method is applicable to
-given arguments. Type union and intersubsection, used to estimate
+given arguments. Type union and intersection, used to estimate
 least upper bounds and greatest lower bounds, respectively, may both be
 conservatively approximated. If their results are too coarse, the
 worst that can happen is performing method dispatch or type checks
@@ -1094,7 +1085,7 @@ An obvious simplification is performed: if one of $T$ or $S$ is a
 subtype of the other, it can be removed from the union. Nested union
 types are flattened, followed by pairwise simplification.
 
-\subsubsection{Type Intersubsection}
+\subsubsection{Type Intersection}
 
 This is the difficult one: given types $T$ and $S$, we must try to compute
 the smallest type $R$ such that
@@ -1120,7 +1111,7 @@ used by traditional polymorphic type systems \cite{MLtypeinf}.
 
 The code for handling tuples and union types is similar to that in
 Algorithm~\ref{alg3}, so we focus instead on intersecting types in the
-nominative hierarchy (Algorithm~\ref{alg4}). The base case occurs when
+nominal hierarchy (Algorithm~\ref{alg4}). The base case occurs when
 the input types are from the same family, i.e. have the same
 $typename$. All we need to do is visit each parameter to collect any
 needed constraints, and otherwise check that the parameters are equal.
@@ -1129,7 +1120,7 @@ must be intersected with the corresponding parameter of the other type
 to form the final result.
 
 \begin{algorithm}
-\caption{Intersubsection of nominative types}
+\caption{Intersection of nominal types}
 \label{alg4}
 \begin{algorithmic}
 \REQUIRE types $A$ and $B$, current constraint environment
@@ -1229,9 +1220,9 @@ by instantiating its family with parameter values in $E$.
 Constraints $T\leq S$ where $S$ is a concrete type are converted to
 $T=S$ to help sharpen the result type.
 If Algorithm~\ref{alg5} identifies any conflicting constraints, the
-type intersubsection is empty. If each type variable has exactly one
+type intersection is empty. If each type variable has exactly one
 constraint $T=U$, we can simply substitute $find(X,U)$ for each occurrence
-of $T$ in the computed type intersubsection, and we have a final answer.
+of $T$ in the computed type intersection, and we have a final answer.
 $find$ works in the \emph{union-find} sense, following chains of equalities
 until we hit a non-variable or an unconstrained variable. Unconstrained
 type variables may be left in place.
@@ -1239,19 +1230,19 @@ type variables may be left in place.
 The remaining case is type variables with multiple constraints. Finding
 a satisfying assignment requires intersecting all the upper bounds for
 a variable. It is here that we choose to throw in the towel and switch
-to a coarser notion of intersubsection, denoted by $\sqcap^{*}$.
-Intersubsection is effectively the inner loop of type inference, so in the
+to a coarser notion of intersection, denoted by $\sqcap^{*}$.
+Intersection is effectively the inner loop of type inference, so in the
 interest of getting a reasonable answer quickly we might pick
 $X\sqcap^{*}Y=X$. A few simple heuristics might as well be added; for
 example cases like two non-parameterized types where one is an immediate
 subtype of the other can be supported easily.
 
-In our implementation, type intersubsection handles most of the
+In our implementation, type intersection handles most of the
 complexity surrounding type variables and parametric methods. 
 It is used to test applicability of parametric methods; since all
 run-time argument lists are of concrete type, intersecting their types
 with method signatures behaves like $subtype$, except static parameters
-are also properly matched. If intersubsection returns $\bot$ or does not find
+are also properly matched. If intersection returns $\bot$ or does not find
 values for all static parameters for a method, the method is not applicable.
 Therefore in practice we do not really have the freedom to implement
 $\sqcap$ and $\sqcap^{*}$ any way that obeys our correctness property.
@@ -1556,81 +1547,82 @@ functions may also have complex type behavior, and it is up to the
 library designer to decide which functions should be staged.
 
 
-\subsection{Generic Programming}
+%%% NOTE: nominated for deletion by JWB
+%% \subsection{Generic Programming}
 
-Support for generic programming is one of Julia's strengths.
-Code in dynamic languages is often thought of as generic by default, due
-to the absence of type restrictions, but this has its limits. First, many
-systems, such as Common LISP, support optional type declarations to
-improve performance. However, when this feature is used code usually
-becomes monomorphic as a result. Second, some cases of generic
-programming require the ability to specify behaviors that \emph{vary}
-based on types, for example initializing a variable with the right kind
-of container, or with an appropriate value for different numeric types.
+%% Support for generic programming is one of Julia's strengths.
+%% Code in dynamic languages is often thought of as generic by default, due
+%% to the absence of type restrictions, but this has its limits. First, many
+%% systems, such as Common LISP, support optional type declarations to
+%% improve performance. However, when this feature is used code usually
+%% becomes monomorphic as a result. Second, some cases of generic
+%% programming require the ability to specify behaviors that \emph{vary}
+%% based on types, for example initializing a variable with the right kind
+%% of container, or with an appropriate value for different numeric types.
 
-Julia has neither of these problems. The first is solved both by
-automatic specialization (which usually eliminates the need for
-performance-seeking declarations), and static parameters, which allow
-declarations containing type variables. The second is solved by the
-ability to define type traits. Multiple dispatch is also helpful, as it
-provides many ways to extend functions in the future.
+%% Julia has neither of these problems. The first is solved both by
+%% automatic specialization (which usually eliminates the need for
+%% performance-seeking declarations), and static parameters, which allow
+%% declarations containing type variables. The second is solved by the
+%% ability to define type traits. Multiple dispatch is also helpful, as it
+%% provides many ways to extend functions in the future.
 
-As an example, here is how {\tt max} can be written for any array:
+%% As an example, here is how {\tt max} can be written for any array:
 
-\begin{verbatim}
-function max{T<:Real}(A::AbstractArray{T})
-    v = typemin(T)
-    for x in A
-        if x > v
-            v = x
-        end
-    end
-    return v
-end
-\end{verbatim}
+%% \begin{verbatim}
+%% function max{T<:Real}(A::AbstractArray{T})
+%%     v = typemin(T)
+%%     for x in A
+%%         if x > v
+%%             v = x
+%%         end
+%%     end
+%%     return v
+%% end
+%% \end{verbatim}
 
-At the same time, we could provide an alternate implementation that makes
-even fewer assumptions:
+%% At the same time, we could provide an alternate implementation that makes
+%% even fewer assumptions:
 
-\begin{verbatim}
-function max(A)
-    v = typemin(eltype(A))
-    ...
-end
-\end{verbatim}
+%% \begin{verbatim}
+%% function max(A)
+%%     v = typemin(eltype(A))
+%%     ...
+%% end
+%% \end{verbatim}
 
-This allows any container to expose its element type by implementing
-{\tt eltype}. Here we do not have to know how the element type is
-determined. In fact, this version would work for arrays equally well
-as the first implementation, but we skip the opportunity to specify
-that it is only defined for arrays with {\tt Real} elements.
-We might also choose to call {\tt typemin} only if the container is
-empty, and otherwise initialize {\tt v} with the first element. Then
-{\tt max} would work on containers that do not implement {\tt eltype},
-as long as they are never empty.
+%% This allows any container to expose its element type by implementing
+%% {\tt eltype}. Here we do not have to know how the element type is
+%% determined. In fact, this version would work for arrays equally well
+%% as the first implementation, but we skip the opportunity to specify
+%% that it is only defined for arrays with {\tt Real} elements.
+%% We might also choose to call {\tt typemin} only if the container is
+%% empty, and otherwise initialize {\tt v} with the first element. Then
+%% {\tt max} would work on containers that do not implement {\tt eltype},
+%% as long as they are never empty.
 
-Flexible ad-hoc polymorphism plays a significant role in Julia's overall
-performance. In scientific computing especially, important special cases
-exist among the myriad datatypes that might appear in a program. Our
-dispatch model permits writing definitions for more specialized cases
-than most object-oriented languages.
+%% Flexible ad-hoc polymorphism plays a significant role in Julia's overall
+%% performance. In scientific computing especially, important special cases
+%% exist among the myriad datatypes that might appear in a program. Our
+%% dispatch model permits writing definitions for more specialized cases
+%% than most object-oriented languages.
 
-For example, we have {\tt Array}, the type of dense arrays, and
-{\tt SubArray}, an abstract array that references a contiguous subsection of
-another array. The BLAS and LAPACK libraries allow the caller to specify
-dimension strides, and we would like to call them for any arrays they
-can handle. To do this, we can define the following types:
+%% For example, we have {\tt Array}, the type of dense arrays, and
+%% {\tt SubArray}, an abstract array that references a contiguous subsection of
+%% another array. The BLAS and LAPACK libraries allow the caller to specify
+%% dimension strides, and we would like to call them for any arrays they
+%% can handle. To do this, we can define the following types:
 
-\begin{verbatim}
-typealias Matrix{T}  Array{T,2}
-typealias StridedMatrix{T,A<:Array}  
-          Union(Matrix{T}, SubArray{T,2,A})
-\end{verbatim}
+%% \begin{verbatim}
+%% typealias Matrix{T}  Array{T,2}
+%% typealias StridedMatrix{T,A<:Array}  
+%%           Union(Matrix{T}, SubArray{T,2,A})
+%% \end{verbatim}
 
-Then we can write definitions such as
-{\tt *(StridedMatrix\{T\},} {\tt StridedMatrix\{T\})} for appropriate element types
-{\tt T}. This replaces the custom dispatch schemes often implemented in
-array programming systems.
+%% Then we can write definitions such as
+%% {\tt *(StridedMatrix\{T\},} {\tt StridedMatrix\{T\})} for appropriate element types
+%% {\tt T}. This replaces the custom dispatch schemes often implemented in
+%% array programming systems.
 
 % todo more?
 
@@ -1830,7 +1822,7 @@ operators, reductions, sorting, etc.). We suspect that our library is
 one of the most compact implementations of this body of functionality.
 
 At this time, every contributor except the core developers is a ``new user''
-of Julia, having known of the language for no more than three months.
+of Julia, having known of the language for no more than six months.
 Despite this, our function library has received several significant
 community contributions, and numerous smaller ones. We take this as
 encouraging evidence that Julia is productive and easy to learn.
