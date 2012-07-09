@@ -64,65 +64,89 @@ performance computing
 
 \section{Introduction}
 
-Convenience is winning. Despite continued advances in compiler technology
-and execution frameworks for high-performance computing, programmers
-routinely use high-level dynamic languages for algorithm
-development in applied math, engineering,  and the sciences. These systems
-(prominent examples include Python \cite{numpy}, R \cite{Rlang},
-MATLAB\textregistered, Octave \cite{Octave}, and SciLab \cite{scilab})
-have greatly increased
-productivity, but are known to lack performance for many demanding applications.
-The result is a two-tiered software world, where
-C and FORTRAN are used for key libraries and production code, while
-high-level languages are used for interaction and scripting overall workflow.
-A new approach to dynamic language design can
-change this situation, providing productivity and performance at once. We
-should embrace the emerging preference for ``scripting'' style languages,
-and ask how these systems can better provide for the future of technical
-computing.
+Convenience is winning. Despite continued advances in compiler
+technology and execution frameworks for high-performance computing,
+programmers continue to prefer high-level dynamic languages for
+algorithm development and data analysis in applied math, engineering,
+and the sciences. Systems such as R \cite{Rlang},
+MATLAB\textregistered, Python\cite{numpy} , Octave \cite{Octave}, and
+SciLab \cite{scilab}) have greatly increased productivity, but are
+often found lacking in performance.
 
-The ``two-tier'' architecture --- for example writing an application in
-Python with performance-critical code written in C --- can be a good
-way to balance performance and productivity, and works well for some
-applications. However, there are
-reasons to move away from this architecture.
-Naturally, it would be preferable to
-write compute-intensive code in a more productive language as well,
-especially when developing parallel algorithms, where code complexity
-can increase dramatically.  Programming in two languages can also be
-more complex than using either language by itself, due to interfacing
-issues such as converting between type domains and handling memory
-reclamation.  These interfacing issues may also add overhead when
-calling between layers. When such a system is used for mathematical
-programming there is pressure to write ``vectorized'' code, which is
-not natural for every problem. Lastly, from a compiler's point of
-view, these designs make it difficult to perform whole-program
-optimization. It is difficult to perform domain-specific optimizations
-of C code, and expressing algorithms at a higher level makes certain
-optimizations easier.
+% The result is a two-tiered software world, where C and FORTRAN are
+% used for key libraries and production code, while high-level languages
+% are used for interaction and scripting overall workflow.  A new
+% approach to dynamic language design can change this situation for
+% technical computing, providing productivity and performance in one
+% package. We should embrace the emerging preference for ``scripting''
+% style languages, and ask how these systems can better provide for the
+% future of technical computing.
+
+A technical computing language balances the preferences of the end
+user, the library developer, and the language designer. Users of such
+languages overwhelmingly prefer features such as interactivity (REPL,
+graphics, etc.), scripting, type-free programming, and high
+performance to the extent possible. Many users go to extreme lengths
+to avoid using the {\it two-tier trap}, where performance critical
+sections of the code are rewritten in C or Fortran. Aggressive
+vectorization is a commonly used technique that is used to avoid the
+two-tier trap, even at the cost of making the code difficult to read,
+and increasing memory utilization. More compute resources are also
+often thrown at the problem to avoid rewriting the application.
+Although seasoned programmers consider it a badge of honour, most
+users simply do not know C or Fortran, are unwilling to learn, or
+simply unwilling to go through the hassle. Programming in two
+languages can also be more complex than using either language by
+itself, due to interfacing issues such as converting between type
+domains and handling memory reclamation.  These interfacing issues may
+also add overhead when calling between layers.
+
+Library developers are happy to do whatever it takes to get
+performance --- type annotations, parallelization, embracing the {\it
+  two-tier trap}, etc. Rewriting computational kernels in a different
+language often puts them at a disadvantage though, since the resulting
+code is not generic, or uses a combination of perl or shell scripts to
+generate code that can work with multiple input types. Distribution of
+such libraries is also difficult, since they have to be compiled for
+various combinations of operating systems and compilers.
+
+The language designer prefers to design a language that exposes the
+amount of low-level information to the compiler for high performance,
+without curbing the productivity of the end users and library
+developers. From a compiler's point of view, programming in multiple
+languages makes it difficult to perform whole-program optimization. It
+is difficult to perform domain-specific optimizations of C code, and
+expressing algorithms at a higher level makes certain optimizations
+easier.
 
 Fortunately, there has been significant progress in improving the
 performance of dynamic languages. Projects like the Python compiler
-framework PyPy \cite{pypyjit} have been fairly successful. Similar efforts
-exist for languages from LISP onward. The common feature of all
-such projects is that they seek to add performance to an existing
-language. This is obviously useful, but we are somewhat surprised to find
-it has not led to the desired situation outlined above. Julia is designed
-for performance from the beginning, and we feel this
-seemingly-subtle difference turns out to be crucial.
+framework PyPy \cite{pypyjit} have been fairly successful. Similar
+efforts exist for languages from LISP onward. The common feature of
+all such projects is that they seek to add performance to an existing
+language. This is obviously useful where a large body of existing code
+can benefit from language-level performance enhancements, but while
+promising, these efforts have yet to deliver. Julia is designed for
+performance from the beginning, and we feel this seemingly-subtle
+difference turns out to be crucial.
 
 %In our design, the compiler machinery that provides performance
 %is also available for extra expressivity in programs.
 
-``Built-in'' performance means that the compiler's type machinery is also
-available within the language, adding expressiveness. This, in turn,
-allows more functionality to be implemented in
-libraries. Many of the key differences between languages used by different
-disciplines (e.g. R for statistics) could be expressed in libraries, but
-are instead either part of the language core, or implemented in C where
+{\it Built-in} performance means that the compiler's type machinery is
+also available within the language, adding expressiveness. This, in
+turn, allows more functionality to be implemented in libraries. Many
+of the key differences between languages used by different disciplines
+(e.g. R for statistics) could be expressed in libraries, but are
+instead either part of the language core, or implemented in C where
 they are more difficult to modify or extend. When optimizers for these
-languages are developed, knowledge of key library functions often must be
-encoded into the compiler.
+languages are developed, knowledge of key library functions often must
+be encoded into the compiler. Often, languages focus on one particular
+type (eg. {\it double precision}. It is cumbersome to write codes that
+use floating point numbers with different precisions, or other
+built-in types such as integers and strings. Codes that use
+user-defined types end up being extremely slow, that users tend to
+avoid defining their own types altogether.
 
 %Even Common LISP, for which there are several
 %highly-optimizing compilers, specifies arithmetic in the language, and
@@ -130,16 +154,18 @@ encoded into the compiler.
 %users require specialized types such as fixed-point numbers or intervals,
 %or support for ``missing data'' values as in R.
 
-Julia has the potential to solve this problem by providing infrastructure
-that can be shared across domains, without sacrificing the ease and
-immediacy of current popular systems.
-We take advantage of, and validate, this infrastructure by writing Julia's
-standard library in the language itself, which (1) makes the code more
-generic and increases our productivity, (2) allows inlining library
-code into user code and vice-versa, and (3) enables direct type analysis
-of the library instead of requiring knowledge of library functions to
-be built in to the compiler. New users are able to read the standard
-library code, and modify it or imitate it for their own purposes.
+Julia has the potential to solve this problem by providing
+infrastructure that can be shared across domains, without sacrificing
+the ease and immediacy of current popular systems.  We take advantage
+of, and validate, this infrastructure by writing Julia's standard
+library in the language itself, which (1) makes the code more generic
+and increases our productivity, (2) allows inlining library code into
+user code and vice-versa, and (3) enables direct type analysis of the
+library instead of requiring knowledge of library functions to be
+built in to the compiler. New users are able to read the standard
+library code, and modify it, imitate it, or extend it for their own
+purposes.
+
 %Ultimately, performance is about flexibility, not just getting answers
 %faster.
 
@@ -183,7 +209,7 @@ library code, and modify it or imitate it for their own purposes.
 %% 3. If a language isn't as easy as matlab or R, people will keep using
 %% matlab or R.
 
-\section{The Essence of Julia}
+%\section{The Essence of Julia}
 
 Julia's primary means of abstraction is dynamic multiple dispatch.
 Much of a language consists of mechanisms for selecting
@@ -1706,12 +1732,9 @@ probably possible.
 JavaScript as typically deployed is not able to call the native BLAS code,
 but the V8 compiler's work is respectable here.
 
-Figure~\ref{mbr}
-\footnote{
+Figure~\ref{mbr}\footnote{
 Linux kernel 3.2.8 PC with 3.2GHz Intel Core i5 CPU, 4GB of RAM.
-Python 2.7.2.
-}
-compares Julia and Python on some
+Python 2.7.2.} compares Julia and Python on some
 more realistic ``task level'' benchmarks. The first test defines two
 data types (classes in Python), then forms (by appending) a heterogeneous
 array containing one million instances of each type. Then a method is called
@@ -1803,22 +1826,22 @@ more or less often, biasing the numbers.
 
 \subsection{Productivity}
 
-Our implementation of Julia consists of 11000 lines of C, 4000 lines of C++,
-and 3500 lines of Scheme (here we are not counting code in external
-libraries such as BLAS and LAPACK).
-Thus we have significantly less low-level code to maintain than most scripting
-languages. 
-Our standard library is roughly 25000 lines of Julia code.
-The standard library provides around 300 numerical functions
-of the sort found in all technical computing environments (arithmetic
-operators, reductions, sorting, etc.). We suspect that our library is
-one of the most compact implementations of this body of functionality.
+Our implementation of Julia consists of 11000 lines of C, 4000 lines
+of C++, and 3500 lines of Scheme (here we are not counting code in
+external libraries such as BLAS and LAPACK).  Thus we have
+significantly less low-level code to maintain than most scripting
+languages.  Our standard library is roughly 25000 lines of Julia code.
+The standard library provides around 300 numerical functions of the
+sort found in all technical computing environments. We suspect that
+our library is one of the most compact implementations of this body of
+functionality.
 
-At this time, every contributor except the core developers is a ``new user''
-of Julia, having known of the language for no more than six months.
-Despite this, our function library has received several significant
-community contributions, and numerous smaller ones. We take this as
-encouraging evidence that Julia is productive and easy to learn.
+At this time, every contributor except the core developers is a ``new
+user'' of Julia, having known of the language for no more than six
+months.  Despite this, our function library has received several
+significant community contributions, and numerous smaller ones. We
+take this as encouraging evidence that Julia is productive and easy to
+learn.
 
 %~12000 lines extras
 %~3000 lines examples
