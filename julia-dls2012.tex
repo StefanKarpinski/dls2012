@@ -19,7 +19,7 @@
 %\copyrightdata{[to be supplied]} 
 
 %\titlebanner{Julia}        % These are ignored unless
-\preprintfooter{Julia: A fresh approach to technical computing}   % 'preprint' option specified.
+\preprintfooter{Julia: A fast dynamic language for technical computing}   % 'preprint' option specified.
 
 \title{Julia: A fresh approach to technical computing}
 %\subtitle{Subtitle Text, if any}
@@ -65,60 +65,57 @@ MATLAB\textregistered, Python\cite{numpy} , Octave \cite{Octave}, and
 SciLab \cite{scilab}) have greatly increased productivity, but are
 often found lacking in performance.
 
-% The result is a two-tiered software world, where C and FORTRAN are
-% used for key libraries and production code, while high-level languages
-% are used for interaction and scripting overall workflow.  A new
-% approach to dynamic language design can change this situation for
-% technical computing, providing productivity and performance in one
-% package. We should embrace the emerging preference for ``scripting''
-% style languages, and ask how these systems can better provide for the
-% future of technical computing.
+The result is a two-tiered software world, where C and Fortran are
+used for key libraries and production code, while high-level languages
+are used for interaction and scripting workflow.  A new
+approach to dynamic language design can change this situation,
+providing productivity and performance in one
+package. We should embrace the emerging preference for ``scripting''
+style languages, and ask how these systems can better provide for the
+future of technical computing.
 
 A technical computing language balances the preferences of the end
-user, the library developer, and the language designer. Users of such
-languages overwhelmingly prefer features such as interactivity (REPL,
-graphics, etc.), scripting, type-free programming, and high
-performance to the extent possible. Many users go to extreme lengths
-to avoid using the {\it two-tier trap}, where performance critical
-sections of the code are rewritten in C or Fortran. Aggressive
-vectorization is a commonly used technique that is used to avoid the
-two-tier trap, even at the cost of making the code difficult to read,
-and increasing memory utilization. More compute resources are also
-often thrown at the problem to avoid rewriting the application.
-Although seasoned programmers consider it a badge of honour, most
-users simply do not know C or Fortran, are unwilling to learn, or
-simply unwilling to go through the hassle. Programming in two
+user, the library developer, and the language designer.
+The ``two-tier'' archiecture, though successful for some applications,
+takes its toll on each category of programmer.
+Users of such
+languages overwhelmingly prefer features such as interactivity,
+scripting, and type-free programming.
+To obtain performance, users face a few unappealing options.
+One option is to employ aggressive vectorization, often at the cost of making
+code difficult to read, and often increasing memory use.
+Another option is to rewrite code in C or Fortran, which many users
+are unwilling to learn. Programming in two
 languages can also be more complex than using either language by
 itself, due to interfacing issues such as converting between type
 domains and handling memory reclamation.  These interfacing issues may
 also add overhead when calling between layers.
 
 Library developers are happy to do whatever it takes to get
-performance --- type annotations, parallelization, embracing the {\it
-  two-tier trap}, etc. Rewriting computational kernels in a different
-language often puts them at a disadvantage though, since the resulting
-code is not generic, or uses a combination of perl or shell scripts to
-generate code that can work with multiple input types. Distribution of
-such libraries is also difficult, since they have to be compiled for
-various combinations of operating systems and compilers.
+performance --- type annotations, parallelization, or using multiple
+languages.
+However, rewriting computational kernels in a different
+language can put them at a disadvantage, since the resulting
+code may not be generic, or requires scripts to
+generate code for multiple input types. Distribution of
+such libraries is difficult, since they have to be compiled for
+various combinations of operating systems and architectures.
 
-The language designer prefers to design a language that exposes the
-amount of low-level information to the compiler for high performance,
-without curbing the productivity of the end users and library
-developers. From a compiler's point of view, programming in multiple
-languages makes it difficult to perform whole-program optimization. It
-is difficult to perform domain-specific optimizations of C code, and
-expressing algorithms at a higher level makes certain optimizations
-easier.
+From a language designer's point of view, programming in multiple
+languages makes it difficult to perform whole-program optimizations. It
+is also difficult to perform domain-specific optimizations of C code.
+% ...
 
 Fortunately, there has been significant progress in improving the
 performance of dynamic languages. Projects like the Python compiler
 framework PyPy \cite{pypyjit} have been fairly successful. Similar
 efforts exist for languages from LISP onward. The common feature of
 all such projects is that they seek to add performance to an existing
-language. This is obviously useful where a large body of existing code
-can benefit from language-level performance enhancements, but while
-promising, these efforts have yet to deliver. Julia is designed for
+language. This is obviously useful, since a large body of existing code
+can benefit. But while
+promising, these efforts have yet to significantly decrease the need for
+the ``two-tier'' approach in practice.
+Julia is designed for
 performance from the beginning, and we feel this seemingly-subtle
 difference turns out to be crucial.
 
@@ -282,7 +279,7 @@ based on those types.
 (type definition, method definition, object allocation, element access,
 testing object identity, and accessing type tags).
 \item Compiler intrinsic functions for native arithmetic, bit string operations,
-and calling native (C or FORTRAN) functions.
+and calling native (C or Fortran) functions.
 \item A mechanism for binding top-level names.
 \end{enumerate}
 
@@ -1702,7 +1699,7 @@ CSV parse         & 0.06         & 0.06           & 0.49        & 0.17 \\
 
 
 We can see why the standard libraries of these environments are
-developed in C and FORTRAN. MATLAB\textregistered has a JIT compiler
+developed in C and Fortran. MATLAB\textregistered has a JIT compiler
 that works quite well in some cases, but is inconsistent, and
 performs especially poorly on user-level function calls. The V8
 JavaScript JIT compiler's performance is impressive. Anomalously, both
