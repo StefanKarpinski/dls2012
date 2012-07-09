@@ -227,12 +227,11 @@ and language design.
 
 Static typing appears to have many advantages from a theoretical
 standpoint: earlier error detection, generally better performance, and
-support for more accurate tools are often cited in this context.
+support for more accurate tools are often cited.
 Nevertheless, developers are ``voting with their code'' for languages that
-lack strong static typing disciplines. This is the phenomenon that Julia's
+lack static typing disciplines. This is the phenomenon that Julia's
 design addresses, and as such we must present our view of the advantages of
-dynamic languages. In particular, we do not assume that \emph{every}
-feature of these languages is equally important.
+dynamic languages.
 We hypothesize that the following forms of ``dynamism'' are
 the most useful:
 
@@ -300,11 +299,14 @@ references, and are passed by reference as in LISP.
 
 \subsection{Types}
 
+% TODO: introduce <: syntax in this section
+
 Julia uses dynamic typing, which means that the universal type {\tt Any}
 is the only static type. Our design philosophy is that types should be
-quite expressive, but nearly invisible to the user. Julia
-programmers must be able to ignore the type system if they do
-not wish to make explicit use of it.
+quite expressive, but nearly invisible to the user.
+%Julia
+%programmers must be able to ignore the type system if they do
+%not wish to make explicit use of it.
 
 Julia treats types as symbolic descriptions of sets of values. Every value has
 a unique, immutable, run-time implementation type. Objects carry type tags, and
@@ -546,7 +548,7 @@ constraints significantly complicate the type lattice operators.
 Composite types are applied as functions to construct instances.
 The default constructor accepts values for each field as arguments.
 Users may override the default constructor by writing method definitions
-with the same name as the type inside the {\tt type} block. Inside the
+with the same name as the type inside the type definition block. Inside the
 {\tt type} block the identifier {\tt new} is bound to a pseudofunction
 that actually constructs instances from field values. The constructor
 for the {\tt Rational} type is a good example:
@@ -581,9 +583,6 @@ type.
 
 To accomplish this, we introduce a special singleton kind {\tt Type\{T\}},
 which contains the type {\tt T} as its only value.
-%This is similar to the
-%self-type pattern [cite], except along the type-of hierarchy rather than along
-%the subtype-of hierarchy.
 The result is a feature similar to {\tt eql}
 specializers in CLOS, except only for types. An example use is defining
 type traits:
@@ -603,8 +602,11 @@ more elegant and convenient than systems where enums or special constants must
 be used for this purpose, or where the type information is implicit
 (e.g. through return-type overloading).
 
-% TODO: note that this, together with appropriate specialization logic,
-% gives the benefits of static parameters without bothering the user.
+This feature allows sharper types to be inferred when the user programs
+with types, for example by calling the {\tt typeof} function or applying
+type constructors. As a result, we gain the performance and flexibility
+advantages of static parameters (such as template arguments) without special
+syntax.
 
 \subsection{Method Sorting and Ambiguity}
 Methods are stored sorted by specificity, so the first matching method
@@ -716,6 +718,19 @@ surface syntax     & lowered form \\\hline \hline
 \end{tabular}
 
 
+\subsection{Calling C and Fortran}
+
+% TODO ccall
+
+
+\subsection{Parallelism}
+
+%% VBS: What do we say about parallelism. Do we stay quiet, deflect it
+%% to later, or talk about broad principles in our approach to parallelism?
+
+% TODO mention coroutines
+
+
 \subsection{Design Limitations}
 
 In our design, type information always flows along with values, in the
@@ -743,14 +758,6 @@ Lastly, at this time Julia uses a bit more memory than we would prefer.
 Our compiler data structures, type information, and generated native code
 take up more space than the compact bytecode representations used by many
 dynamic languages.
-
-\subsection{Extra Features}
-
-\begin{enumerate}
-\item symmetric coroutines
-\item macros
-\item ccall
-\end{enumerate}
 
 \section{Implementation}
 
@@ -997,11 +1004,7 @@ that they might run faster. One valuable improvement is
 to attempt full evaluation of branch conditions, and remove branches
 with constant conditions.
 
-% \subsubsection{Type Transfer Functions}
-
-%todo ?
-
-\subsection{Lattice Operations}
+\subsection{Lattice Operators}
 
 Our type lattice is complicated by the presence of type parameters, unions,
 and diagonal type constraints in method signatures. Fortunately, for our
@@ -1274,8 +1277,6 @@ cutoffs each time the inference process needs to construct a tuple
 type.
 
 
-%\subsubsection{Method Specificity Comparison}
-
 
 \subsection{Code Generation and Optimization}
 
@@ -1315,16 +1316,6 @@ rest of the way to competitive performance. We have found that care
 is needed in benchmarking: if the value computed by a loop is not
 used, in some cases LLVM has been able to delete the whole thing.
 
-%compile-time method lookup
-%ccall intrinsic
-
-% todo ?
-\subsection{Run Time System}
-
-\begin{enumerate}
-\item lazy allocation of tuple types
-\item storing compiler data serialized
-\end{enumerate}
 
 \section{Example Use Cases}
 
@@ -1632,8 +1623,6 @@ library designer to decide which functions should be staged.
 %% {\tt T}. This replaces the custom dispatch schemes often implemented in
 %% array programming systems.
 
-% todo more?
-
 \section{Evaluation}
 
 \subsection{Performance}
@@ -1836,13 +1825,6 @@ learn.
 %~3000 lines examples
 %~4000 lines of test code
 
-\section{Parallelism}
-
-%% VBS: What do we say about parallelism. Do we stay quiet, deflect it
-%% to later, or talk about broad principles in our approach to parallelism?
-
-\section{Standard library}
-
 \section{Community}
 
 Julia was publicly announced in February 2012. Our goals and work so
@@ -1863,14 +1845,9 @@ bit arrays, linear programming, image processing, polynomials,
 GPU code generation, a statistics library, and a web-based interactive
 environment. A package management framework will soon be in place.
 
-%So far we detect enthusiasm for the ability to use declarative
-%information and metaprogramming without giving up convenience for
-%mathematical applications.
 We hope Julia is part of a new generation of dynamic languages that not
 only run faster, but foster more cooperation between the programmer
 and compiler, pushing the standard of productivity ever higher.
-
-% we have much work to do
 
 
 % -------------------------------------------------------------
