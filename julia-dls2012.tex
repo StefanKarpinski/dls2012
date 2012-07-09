@@ -12,11 +12,14 @@
 \usepackage{algorithm}
 \usepackage{algorithmic}
 
+\newcommand{\Matlab}{MATLAB\textsuperscript{\tiny\textregistered}}
+
 \begin{document}
 
-\conferenceinfo{Dynamic Languages Symposium 2012}{October 22, 2012, Tucson, USA.} 
-\copyrightyear{2012} 
-%\copyrightdata{[to be supplied]} 
+\conferenceinfo{Dynamic Languages Symposium 2012}
+               {October 22, 2012, Tucson, USA.}
+\copyrightyear{2012}
+% \copyrightdata{[to be supplied]}
 
 \titlebanner{Julia}      % These are ignored unless
 \preprintfooter{Julia}   % 'preprint' option specified.
@@ -30,17 +33,16 @@
 
 \maketitle
 \begin{abstract}
-  Dynamic languages have become popular for scientific
-  computing. They are generally considered highly productive, but
-  lacking in performance. This paper presents Julia, a new dynamic
-  language for technical computing, designed for performance from the
-  beginning by adapting and extending modern programming language
-  techniques. A design based on generic functions and a rich type
-  system simultaneously enables an expressive programming model and
-  successful type inference, leading to good performance for a wide
-  range of programs. This makes it possible for much of Julia's
-  library to be written in Julia itself, while also incorporating
-  best-of-breed C and Fortran libraries.
+  Dynamic languages have become popular for scientific computing. They
+  are generally considered highly productive, but lacking in performance.
+  This paper presents Julia, a new dynamic language for technical
+  computing, designed for performance from the beginning by adapting and
+  extending modern programming language techniques. A design based on
+  generic functions and a rich type system simultaneously enables an
+  expressive programming model and successful type inference, leading to
+  good performance for a wide range of programs. This makes it possible
+  for much of Julia's library to be written in Julia itself, while also
+  incorporating best-of-breed C and Fortran libraries.
 \end{abstract}
 
 \category{D.3.2}{Programming Languages}{Very high-level languages}
@@ -55,16 +57,15 @@ performance computing
 
 \section{Introduction}
 
-Convenience is winning. Despite continued advances in compiler
-technology and execution frameworks for high-performance computing,
-programmers continue to prefer high-level dynamic languages for
-algorithm development and data analysis in applied math, engineering,
-and the sciences. Systems such as R \cite{Rlang},
-MATLAB\textregistered, Python\cite{numpy} , Octave \cite{Octave}, and
-SciLab \cite{scilab}) have greatly increased productivity, but are
+Convenience is winning. Despite continued advances in compiler technology
+and execution frameworks for high-performance computing, programmers
+continue to prefer high-level dynamic languages for algorithm development
+and data analysis in applied math, engineering, and the sciences. Systems
+such as \Matlab, R\cite{Rlang}, SciPy\cite{numpy}, Octave \cite{Octave},
+and SciLab \cite{scilab} have greatly increased productivity, but are
 often found lacking in performance.
 
-% The result is a two-tiered software world, where C and FORTRAN are
+% The result is a two-tiered software world, where C and Fortran are
 % used for key libraries and production code, while high-level languages
 % are used for interaction and scripting overall workflow.  A new
 % approach to dynamic language design can change this situation for
@@ -84,7 +85,7 @@ vectorization is a commonly used technique that is used to avoid the
 two-tier trap, even at the cost of making the code difficult to read,
 and increasing memory utilization. More compute resources are also
 often thrown at the problem to avoid rewriting the application.
-Although seasoned programmers consider it a badge of honour, most
+Although seasoned programmers consider it a badge of honor, most
 users simply do not know C or Fortran, are unwilling to learn, or
 simply unwilling to go through the hassle. Programming in two
 languages can also be more complex than using either language by
@@ -197,8 +198,8 @@ purposes.
 %% 2. Making parallelism implicit in evaluation semantics is not the way
 %% to get effective parallelism. I think I heard Arvind say they tried it
 %% with parallel Haskell for 10 years, and it didn't work.
-%% 3. If a language isn't as easy as matlab or R, people will keep using
-%% matlab or R.
+%% 3. If a language isn't as easy as \Matlab or R, people will keep using
+%% \Matlab or R.
 
 %\section{The Essence of Julia}
 
@@ -281,7 +282,7 @@ based on those types.
 (type definition, method definition, object allocation, element access,
 testing object identity, and accessing type tags).
 \item Compiler intrinsic functions for native arithmetic, bit string operations,
-and calling native (C or FORTRAN) functions.
+and calling native (C or Fortran) functions.
 \item A mechanism for binding top-level names.
 \end{enumerate}
 
@@ -654,8 +655,8 @@ ambiguity, showing the user the computed type intersection so it is clear what
 definition is missing. For example:
 
 \begin{verbatim}
-Warning: New definition foo(Int,Number) is 
-   ambiguous with foo(Number,Int). Make sure 
+Warning: New definition foo(Int,Number) is
+   ambiguous with foo(Number,Int). Make sure
    foo(Int,Int) is defined first.
 \end{verbatim}
 
@@ -1247,7 +1248,7 @@ example cases like two non-parameterized types where one is an immediate
 subtype of the other can be supported easily.
 
 In our implementation, type intersection handles most of the
-complexity surrounding type variables and parametric methods. 
+complexity surrounding type variables and parametric methods.
 It is used to test applicability of parametric methods; since all
 run-time argument lists are of concrete type, intersecting their types
 with method signatures behaves like $subtype$, except static parameters
@@ -1332,7 +1333,7 @@ used, in some cases LLVM has been able to delete the whole thing.
 
 %By design, it is possible to write many programs in Julia that are
 %entirely unsurprising to users of current systems such as Python, R, and
-%MATLAB\textregistered. Therefore, in this chapter we focus instead on
+%\Matlab. Therefore, in this chapter we focus instead on
 %more novel uses enabled by Julia's types and dispatch mechanism.
 
 % these examples focus on unique features of julia. much julia code is
@@ -1371,7 +1372,7 @@ and returns the results
 
 \begin{verbatim}
 function promote{T,S}(x::T, y::S)
-    (convert(promote_type(T,S),x), 
+    (convert(promote_type(T,S),x),
      convert(promote_type(T,S),y))
 end
 \end{verbatim}
@@ -1395,9 +1396,9 @@ end
 such definitions for the {\tt Complex128} type are:
 
 \begin{verbatim}
-promote_rule(::Type{Complex128}, 
+promote_rule(::Type{Complex128},
              ::Type{Float64}) = Complex128
-convert(::Type{Complex128}, x::Real) = 
+convert(::Type{Complex128}, x::Real) =
         complex128(x, 0)
 \end{verbatim}
 
@@ -1523,7 +1524,7 @@ definition. For example, given arguments of types
 {\tt (Int,Int)} and {\tt (Int,Int,Int)} the generated definition would be:
 
 \begin{verbatim}
-function promote_shape(s1::(Int,Int), 
+function promote_shape(s1::(Int,Int),
                        s2::(Int,Int,Int))
     return s2
 end
@@ -1625,7 +1626,7 @@ library designer to decide which functions should be staged.
 
 %% \begin{verbatim}
 %% typealias Matrix{T}  Array{T,2}
-%% typealias StridedMatrix{T,A<:Array}  
+%% typealias StridedMatrix{T,A<:Array}
 %%           Union(Matrix{T}, SubArray{T,2,A})
 %% \end{verbatim}
 
@@ -1641,14 +1642,14 @@ library designer to decide which functions should be staged.
 \subsection{Performance}
 
 We have compared the execution speed of Julia code to that of six other
-languages: C++, Python, MATLAB\textregistered, Octave, R, and JavaScript.
+languages: C++, Python, \Matlab, Octave, R, and JavaScript.
 Figure~\ref{mbr}
 \footnote{
   These measurements were carried out on a MacBook Pro with a 2.53GHz
   Intel Core 2 Duo CPU and 8GB of 1066MHz DDR3 RAM. The following
-  versions were used: Python 2.7.1, MATLAB\textregistered R2011a,
+  versions were used: Python 2.7.1, \Matlab R2011a,
   Octave 3.4, R 2.14.2, V8 3.6.6.11.  The C++ baseline was compiled by
-  GCC 4.2.1, taking best timing from all optimization levels. 
+  GCC 4.2.1, taking best timing from all optimization levels.
   Native implementations of array operations, matrix
   multiplication, sorting, are used where available.
 }
@@ -1666,7 +1667,7 @@ array elements.
 \begin{center}
 
 \begin{tabular}{|l|r|r|r|r|r|r|}\hline
-test & Julia & Python & MATLAB\textregistered & Octave & R & JavaScript \\
+test & Julia & Python & \Matlab & Octave & R & JavaScript \\
 \hline \hline
 fib        & 1.97 & 31.47 & 1336.37  & 2383.80 & 225.23 & 1.55 \\
 \hline
@@ -1701,7 +1702,7 @@ CSV parse         & 0.06         & 0.06           & 0.49        & 0.17 \\
 
 
 We can see why the standard libraries of these environments are
-developed in C and FORTRAN. MATLAB\textregistered has a JIT compiler
+developed in C and Fortran. \Matlab has a JIT compiler
 that works quite well in some cases, but is inconsistent, and
 performs especially poorly on user-level function calls. The V8
 JavaScript JIT compiler's performance is impressive. Anomalously, both
@@ -1715,7 +1716,7 @@ wins the day (despite the fact that most of the array library functions
 involved are written in Julia itself).
 
 The rand\_mat\_mul code demonstrates a case where time spent in BLAS \cite{blas}
-dominates. MATLAB\textregistered gets its edge from using a
+dominates. \Matlab gets its edge from using a
 multi-threaded BLAS (threading is available in the BLAS Julia uses,
 but it was disabled when these numbers were taken). R may not be using
 a well-tuned BLAS in this install; more efficient configurations are
@@ -1867,7 +1868,7 @@ environment. A package management framework will soon be in place.
 
 %So far we detect enthusiasm for the ability to use declarative
 %information and metaprogramming without giving up convenience for
-%mathematical applications. 
+%mathematical applications.
 We hope Julia is part of a new generation of dynamic languages that not
 only run faster, but foster more cooperation between the programmer
 and compiler, pushing the standard of productivity ever higher.
@@ -1985,7 +1986,7 @@ C.~Lattner and V.~Adve.
 
 \bibitem[Lawson et~al.(1979)Lawson, Hanson, Kincaid, and Krogh]{blas}
 C.~L. Lawson, R.~J. Hanson, D.~R. Kincaid, and F.~T. Krogh.
-\newblock Basic linear algebra subprograms for fortran usage.
+\newblock Basic linear algebra subprograms for Fortran usage.
 \newblock \emph{ACM Trans. Math. Softw.}, 5\penalty0 (3):\penalty0 308--323,
   Sept. 1979.
 \newblock ISSN 0098-3500.
