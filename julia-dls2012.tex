@@ -1251,14 +1251,14 @@ chain condition necessary for the MFP algorithm to converge (i.e. they
 are not of finite height) and ours is no exception.
 
 Widening is applied in two places: by the join operator, and on every
-recursive invocation of type inference.
-When a union type becomes too large (as determined by an arbitrarily-chosen
-cutoff), it is replaced with {\tt Any}. Tuple types lend themselves
-to two infinite chains: one in depth ({\tt (Any,)}, {\tt ((Any,),)},
-{\tt (((Any,),),)}, etc.) and one in length ({\tt (Any...,)},
-{\tt (Any,Any...,)}, {\tt (Any,Any,Any...,)}, etc.). These chains are
-capped at arbitrary cutoffs each time the inference process needs to
-construct a tuple type.
+recursive invocation of type inference.  When a union type becomes too
+large (as determined by a cutoff), it is replaced with {\tt
+  Any}. Tuple types lend themselves to two infinite chains: one in
+depth ({\tt (Any,)}, {\tt ((Any,),)}, {\tt (((Any,),),)}, etc.)  and
+one in length ({\tt (Any...,)}, {\tt (Any,Any...,)}, {\tt
+  (Any,Any,Any...,)}, etc.). These chains are capped at arbitrary
+cutoffs each time the inference process needs to construct a tuple
+type.
 
 
 %\subsubsection{Method Specificity Comparison}
