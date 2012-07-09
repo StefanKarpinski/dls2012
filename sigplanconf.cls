@@ -1021,24 +1021,18 @@
   \vskip 12pt
   \ifcase \@authorcount
     \@latex@error{No authors were specified for this paper}{}\or
-    \@titleauthors{i}{}{}\or
-    \@titleauthors{i}{ii}{}\or
-    \@titleauthors{i}{ii}{iii}\or
-    \@titleauthors{i}{ii}{iii}\@titleauthors{iv}{}{}\or
-    \@titleauthors{i}{ii}{iii}\@titleauthors{iv}{v}{}\or
-    \@titleauthors{i}{ii}{iii}\@titleauthors{iv}{v}{vi}\or
-    \@titleauthors{i}{ii}{iii}\@titleauthors{iv}{v}{vi}%
-                  \@titleauthors{vii}{}{}\or
-    \@titleauthors{i}{ii}{iii}\@titleauthors{iv}{v}{vi}%
-                  \@titleauthors{vii}{viii}{}\or
-    \@titleauthors{i}{ii}{iii}\@titleauthors{iv}{v}{vi}%
-                  \@titleauthors{vii}{viii}{ix}\or
-    \@titleauthors{i}{ii}{iii}\@titleauthors{iv}{v}{vi}%
-                  \@titleauthors{vii}{viii}{ix}\@titleauthors{x}{}{}\or
-    \@titleauthors{i}{ii}{iii}\@titleauthors{iv}{v}{vi}%
-                  \@titleauthors{vii}{viii}{ix}\@titleauthors{x}{xi}{}\or
-    \@titleauthors{i}{ii}{iii}\@titleauthors{iv}{v}{vi}%
-                  \@titleauthors{vii}{viii}{ix}\@titleauthors{x}{xi}{xii}%
+    \@titleauthors{i}{}{}{}\or
+    \@titleauthors{i}{ii}{}{}\or
+    \@titleauthors{i}{ii}{iii}{}\or
+    \@titleauthors{i}{ii}{iii}{iv}\or
+    \@titleauthors{i}{ii}{iii}{iv}\@titleauthors{v}{}{}{}\or
+    \@titleauthors{i}{ii}{iii}{iv}\@titleauthors{v}{vi}{}{}\or
+    \@titleauthors{i}{ii}{iii}{iv}\@titleauthors{v}{vi}{vii}{}\or
+    \@titleauthors{i}{ii}{iii}{iv}\@titleauthors{v}{vi}{vii}{viii}\or
+    \@titleauthors{i}{ii}{iii}{iv}\@titleauthors{v}{vi}{vii}{viii}\@titleauthors{ix}{}{}{}\or
+    \@titleauthors{i}{ii}{iii}{iv}\@titleauthors{v}{vi}{vii}{viii}\@titleauthors{ix}{x}{}{}\or
+    \@titleauthors{i}{ii}{iii}{iv}\@titleauthors{v}{vi}{vii}{viii}\@titleauthors{ix}{x}{xi}{}\or
+    \@titleauthors{i}{ii}{iii}{iv}\@titleauthors{v}{vi}{vii}{viii}\@titleauthors{ix}{x}{xi}{xii}%
   \else
     \@latex@error{Cannot handle more than 12 authors}{}%
   \fi
@@ -1054,19 +1048,25 @@
     \nointerlineskip
   \fi}
 
-\def \@titleauthors #1#2#3{%
-  \if \@andp{\@emptyargp{#2}}{\@emptyargp{#3}}%
+\def \@titleauthors #1#2#3#4{%
+  \if \@andp{\@andp{\@emptyargp{#2}}{\@emptyargp{#3}}}{\@emptyargp{#4}}%
     \noindent \@setauthor{40pc}{#1}{\@false}\par
-  \else\if \@emptyargp{#3}%
+  \else\if \@andp{\@emptyargp{#3}}{\@emptyargp{#4}}%
     \noindent \@setauthor{17pc}{#1}{\@false}\hspace{3pc}%
               \@setauthor{17pc}{#2}{\@false}\par
-  \else
+  \else\if \@emptyargp{#4}%
     \noindent \@setauthor{12.5pc}{#1}{\@false}\hspace{2pc}%
               \@setauthor{12.5pc}{#2}{\@false}\hspace{2pc}%
               \@setauthor{12.5pc}{#3}{\@true}\par
     \relax
-  \fi\fi
-  \vspace{20pt}}
+  \else
+    \noindent \@setauthor{8pc}{#1}{\@false}\hspace{2pc}%
+              \@setauthor{8pc}{#2}{\@false}\hspace{2pc}%
+              \@setauthor{8pc}{#3}{\@false}\hspace{2pc}%
+              \@setauthor{8pc}{#4}{\@true}\par
+    \relax
+  \fi\fi\fi
+  \vspace{16pt}}
 
 \def \@setauthor #1#2#3{%                       {width}{text}{unused}
   \vtop{%
@@ -1076,10 +1076,10 @@
     \normalfont
     \centering
     \large \@name{\@authorname#2}\par
-    \vspace{5pt}
-    \normalsize \@name{\@authoraffil#2}\par
     \vspace{2pt}
-    \textsf{\@name{\@authoremail#2}}\par}}
+    \textsf{\@name{\@authoremail#2}}\par
+    \vspace{5pt}
+    \normalsize \@name{\@authoraffil#2}\par}}
 
 \def \@maybetitlenote #1{%
   \if \@andp{#1}{\@gtrp{\@authorcount}{3}}%
