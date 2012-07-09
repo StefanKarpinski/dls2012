@@ -720,15 +720,41 @@ surface syntax     & lowered form \\\hline \hline
 
 \subsection{Calling C and Fortran}
 
-% TODO ccall
+We provide the keyword {\tt ccall} for calling native code in-line.
+Its syntax looks like a function call, where the programmer specifies
+an address, result and argument types, and argument values:
+
+\begin{verbatim}
+ccall(dlsym(libm, :sin), Float64, (Float64,), x)
+\end{verbatim}
+
+The first three arguments to {\tt ccall} are actually pseudo-arguments,
+evaluated at compile time. The compiler front-end inserts calls to the
+{\tt convert} function for each argument, ensuring that the actual arguments
+will match the provided signature.
+
+In Fortran, all arguments are passed by reference. To handle this,
+argument types must be written as pointer types such as
+{\tt Ptr\{Float64\}}. An ambiguity then arises in argument conversion:
+an integer argument could be interpreted as a pointer, or as a number
+to convert to {\tt Float64} and pass by reference. To resolve this
+ambiguity, the programmer can request the second interpretation by
+prefixing an argument with an ampersand (a pun on C syntax for taking the
+address of a value), as in {\tt \&x}.
+
 
 
 \subsection{Parallelism}
 
-%% VBS: What do we say about parallelism. Do we stay quiet, deflect it
-%% to later, or talk about broad principles in our approach to parallelism?
-
-% TODO mention coroutines
+Parallel execution is provided by a message-based multi-processing
+system implemented in Julia in the standard library.
+The language design supports the implementation of such libraries by
+providing symmetric coroutines, which can also be thought of as
+cooperatively scheduled threads. This feature allows asynchronous
+communication to be hidden inside libraries, rather than requiring the
+user to set up callbacks. Julia does not currently support
+native threads, which is a limitation, but has the advantage of avoiding
+the complexities of synchronized use of shared memory.
 
 
 \subsection{Design Limitations}
