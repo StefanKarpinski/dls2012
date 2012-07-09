@@ -28,7 +28,7 @@
 
 \authorinfo{Jeff Bezanson}
            {MIT}
-           {jeff.bezanson@gmail.com}
+           {bezanson@mit.edu}
 \authorinfo{Stefan Karpinski}
            {MIT}
            {stefan@karpinski.org}
@@ -124,11 +124,13 @@ disciplines (e.g. R for statistics) could be expressed in libraries, but
 are instead either part of the language core, or implemented in C where
 they are more difficult to modify or extend. When optimizers for these
 languages are developed, knowledge of key library functions often must be
-encoded into the compiler. Even Common LISP, for which there are several
-highly-optimizing compilers, specifies arithmetic in the language, and
-yet users do not all agree on how arithmetic should behave. Some
-users require specialized types such as fixed-point numbers or intervals,
-or support for ``missing data'' values as in R.
+encoded into the compiler.
+
+%Even Common LISP, for which there are several
+%highly-optimizing compilers, specifies arithmetic in the language, and
+%yet users do not all agree on how arithmetic should behave. Some
+%users require specialized types such as fixed-point numbers or intervals,
+%or support for ``missing data'' values as in R.
 
 Julia has the potential to solve this problem by providing infrastructure
 that can be shared across domains, without sacrificing the ease and
@@ -404,6 +406,26 @@ code does not need to be modified.
 % written in code the more ``library-like'' it becomes (cite scala?)
 
 
+\subsection{Generic Functions}
+
+% TODO:
+% talk about how this is a sneaky way to collect type information. since
+% signatures specify dispatch behavior they are not redundant information.
+
+The vast majority of Julia functions (in both the library and user programs)
+are generic functions, meaning they contain multiple definitions or methods for
+various combinations of argument types. When a generic function is applied,
+the most specific definition that matches the run-time argument types is
+invoked. Generic functions have appeared in several object systems in the past,
+notably CLOS \cite{closoverview} and Dylan \cite{dylanlang}.
+Julia is distinguished from these in that
+it uses generic functions as its primary abstraction mechanism, putting it in
+the company of research languages like Diesel \cite{dieselspec}. Aside
+from being practical for mathematical styles of programming,
+this design is satisfying also because it permits
+expression of most of the popular patterns of object-oriented programming,
+while leaving the core language with fewer distinct features.
+
 \subsection{Method Definition}
 Method definitions have a long (multi-line) form and a short form.
 
@@ -444,7 +466,23 @@ is bound to a tuple containing the tail of the argument list. The syntax
 {\tt f(t...)} ``splices'' the contents of an iterable object {\tt t} as the
 arguments to {\tt f}.
 
-\subsubsection{Parametric Methods}
+Generic functions are a natural fit for mathematical programming. For example,
+consider implementing exponentiation (the {\tt \^{}} operator in Julia).
+This function
+lends itself to multiple definitions, specializing on both arguments
+separately: there might be one definition for two floating-point numbers that
+calls a standard math library routine, one definition for the case where the
+second argument is an integer, and separate definitions for the case where the
+first argument is a matrix. In Julia these signatures would be written as
+follows:
+
+\begin{verbatim}
+function ^(x::Float64, p::Float64)
+function ^(x, p::Int)
+function ^(x::Matrix, p)
+\end{verbatim}
+
+\subsection{Parametric Methods}
 
 It is often useful to refer to parameters of argument types inside methods,
 and to specify constraints on those parameters for dispatch purposes.
@@ -469,44 +507,6 @@ despite invariance. The other use is
 writing ``diagonal'' constraints as in the example above. Such diagonal
 constraints significantly complicate the type lattice operators.
 
-
-\subsection{Iteration}
-
-A {\tt for} loop is translated to a while loop with method calls according
-to an iteration interface ({\tt start}, {\tt done}, and {\tt next}).
-
-\begin{verbatim}
-for i in range
-    # body
-end
-\end{verbatim}
-
-Becomes:
-
-\begin{verbatim}
-state = start(range)
-while !done(range, state)
-  (i, state) = next(range, state)
-  # body
-end
-\end{verbatim}
-
-This design for iteration was chosen because it is not tied to mutable
-heap-allocated state, such as an iterator object that updates itself.
-
-\subsection{Special Operators}
-
-Special syntax is provided for certain functions.
-
-\begin{tabular}{|l|l|}\hline
-surface syntax     & lowered form \\\hline \hline
-{\tt a[i, j]}      & {\tt ref(a, i, j)} \\\hline
-{\tt a[i, j] = x}  & {\tt assign(a, x, i, j)} \\\hline
-{\tt [a; b]}       & {\tt vcat(a, b)} \\\hline
-{\tt [a, b]}       & {\tt vcat(a, b)} \\\hline
-{\tt [a b]}        & {\tt hcat(a, b)} \\\hline
-{\tt [a b; c d]}   & {\tt hvcat((2,2), a, b, c, d)}\\\hline
-\end{tabular}
 
 %%% NOTE: nominated for deletion by JWB
 %% \subsection{Type Definition}
@@ -555,43 +555,6 @@ end
 
 This allows {\tt Rational} to enforce representation as a fraction in
 lowest terms.
-
-
-\subsection{Generic Functions}
-
-% TODO:
-% talk about how this is a sneaky way to collect type information. since
-% signatures specify dispatch behavior they are not redundant information.
-
-The vast majority of Julia functions (in both the library and user programs)
-are generic functions, meaning they contain multiple definitions or methods for
-various combinations of argument types. When a generic function is applied,
-the most specific definition that matches the run-time argument types is
-invoked. Generic functions have appeared in several object systems in the past,
-notably CLOS \cite{closoverview} and Dylan \cite{dylanlang}.
-Julia is distinguished from these in that
-it uses generic functions as its primary abstraction mechanism, putting it in
-the company of research languages like Diesel \cite{dieselspec}. Aside
-from being practical for mathematical styles of programming,
-this design is satisfying also because it permits
-expression of most of the popular patterns of object-oriented programming,
-while leaving the core language with fewer distinct features.
-
-Generic functions are a natural fit for mathematical programming. For example,
-consider implementing exponentiation (the {\tt \^{}} operator in Julia).
-This function
-lends itself to multiple definitions, specializing on both arguments
-separately: there might be one definition for two floating-point numbers that
-calls a standard math library routine, one definition for the case where the
-second argument is an integer, and separate definitions for the case where the
-first argument is a matrix. In Julia these signatures would be written as
-follows:
-
-\begin{verbatim}
-function ^(x::Float64, p::Float64)
-function ^(x, p::Int)
-function ^(x::Matrix, p)
-\end{verbatim}
 
 \subsection{Singleton Kinds}
 
@@ -701,6 +664,44 @@ Warning: New definition foo(Int,Number) is
 %% provided a bounds-checked {\tt Buffer} abstraction, but having both this type
 %% and the user-level {\tt Array} type proved inconvenient and confusing.
 
+\subsection{Iteration}
+
+A {\tt for} loop is translated to a while loop with method calls according
+to an iteration interface ({\tt start}, {\tt done}, and {\tt next}).
+
+\begin{verbatim}
+for i in range
+    # body
+end
+\end{verbatim}
+
+Becomes:
+
+\begin{verbatim}
+state = start(range)
+while !done(range, state)
+  (i, state) = next(range, state)
+  # body
+end
+\end{verbatim}
+
+This design for iteration was chosen because it is not tied to mutable
+heap-allocated state, such as an iterator object that updates itself.
+
+\subsection{Special Operators}
+
+Special syntax is provided for certain functions.
+
+\begin{tabular}{|l|l|}\hline
+surface syntax     & lowered form \\\hline \hline
+{\tt a[i, j]}      & {\tt ref(a, i, j)} \\\hline
+{\tt a[i, j] = x}  & {\tt assign(a, x, i, j)} \\\hline
+{\tt [a; b]}       & {\tt vcat(a, b)} \\\hline
+{\tt [a, b]}       & {\tt vcat(a, b)} \\\hline
+{\tt [a b]}        & {\tt hcat(a, b)} \\\hline
+{\tt [a b; c d]}   & {\tt hvcat((2,2), a, b, c, d)}\\\hline
+\end{tabular}
+
 
 \subsection{Design Limitations}
 
@@ -740,13 +741,11 @@ dynamic languages.
 
 \section{Implementation}
 
-\subsection{Method Dispatch}
-
 Much of the implementation is organized around method dispatch. The dispatch
 logic is both a large portion of the behavior of Julia functions, and the
 entry point of the compiler's type inference and specialization logic.
 
-\subsubsection{Method Caching and Specialization}
+\subsection{Method Caching and Specialization}
 
 The first step of method dispatch is to look for the argument types in a
 per-function cache. The cache has an entry for (almost) every set of concrete
@@ -764,7 +763,7 @@ of the actual arguments. The resulting type-annotated and optimized method is
 stored in the cache. In this way, method dispatch is the primary source of type
 information for the compiler.
 
-\subsubsection{Method Specialization Heuristics}
+\subsection{Method Specialization Heuristics}
 
 Our aggressive use of code specialization has the obvious pitfall that it might
 lead to excessive code generation, consuming memory and compile time. We found
@@ -1099,7 +1098,7 @@ are analyzed in a manner similar to $subtype$, except a constraint
 environment is built, with entries $T\leq S$ for type variables $T$ in
 covariant contexts (tuples) and entries $T=S$ for type variables $T$ in
 invariant contexts (type parameters). In the second phase the constraints
-are solved with an algorithm (Algorithm~\ref{alg5}) similar to that
+are solved with an algorithm similar to that
 used by traditional polymorphic type systems \cite{MLtypeinf}.
 
 The code for handling tuples and union types is similar to that in
@@ -1155,44 +1154,45 @@ to form the final result.
 \end{algorithmic}
 \end{algorithm}
 
-\begin{algorithm}
-\caption{Solve type variable constraints}
-\label{alg5}
-\begin{algorithmic}
-\REQUIRE environment $X$ of pairs $T\leq S$ and $T=S$
-\ENSURE environment $Y$ of unique variable assignments $T=S$, or failure
-\STATE $Y \leftarrow \emptyset$
-\STATE replace $(T\leq S) \in X$ with $(T=S)$ when $S$ is concrete
-\FORALL {$(T=S) \in X$}
- \IF {$(T=R) \in X$ \AND $S\neq R$}
-  \RETURN failure
- \ENDIF
-\ENDFOR
-\FORALL {$(T\leq S) \in X$}
- \IF {$(T=U) \in X$}
-  \IF {\NOT $find(X,U)\leq S$}
-   \RETURN failure
-  \ELSE
-   \STATE $X \leftarrow X - (T\leq S)$
-  \ENDIF
- \ELSIF {$(T\leq U) \in X$ and $U$ not a variable}
-  \STATE replace $U$ with $U\sqcap^{*}S$
-  \STATE $X \leftarrow X - (T\leq S)$
- \ENDIF
-\ENDFOR
-\FORALL {variables $T$}
- \IF {$(T=U) \in X$}
-  \STATE $Y \leftarrow Y \cup \{T=U\}$
- \ELSE
-  \STATE $S \leftarrow \sqcap^{*} find(X,U), \forall (T\leq U) \in X$
-  \IF {$S = \bot$}
-   \RETURN failure
-  \ENDIF
-  \STATE $Y \leftarrow Y \cup \{T=S\}$
- \ENDIF
-\ENDFOR
-\end{algorithmic}
-\end{algorithm}
+%%% NOTE: nominated for deletion by JWB
+%% \begin{algorithm}
+%% \caption{Solve type variable constraints}
+%% \label{alg5}
+%% \begin{algorithmic}
+%% \REQUIRE environment $X$ of pairs $T\leq S$ and $T=S$
+%% \ENSURE environment $Y$ of unique variable assignments $T=S$, or failure
+%% \STATE $Y \leftarrow \emptyset$
+%% \STATE replace $(T\leq S) \in X$ with $(T=S)$ when $S$ is concrete
+%% \FORALL {$(T=S) \in X$}
+%%  \IF {$(T=R) \in X$ \AND $S\neq R$}
+%%   \RETURN failure
+%%  \ENDIF
+%% \ENDFOR
+%% \FORALL {$(T\leq S) \in X$}
+%%  \IF {$(T=U) \in X$}
+%%   \IF {\NOT $find(X,U)\leq S$}
+%%    \RETURN failure
+%%   \ELSE
+%%    \STATE $X \leftarrow X - (T\leq S)$
+%%   \ENDIF
+%%  \ELSIF {$(T\leq U) \in X$ and $U$ not a variable}
+%%   \STATE replace $U$ with $U\sqcap^{*}S$
+%%   \STATE $X \leftarrow X - (T\leq S)$
+%%  \ENDIF
+%% \ENDFOR
+%% \FORALL {variables $T$}
+%%  \IF {$(T=U) \in X$}
+%%   \STATE $Y \leftarrow Y \cup \{T=U\}$
+%%  \ELSE
+%%   \STATE $S \leftarrow \sqcap^{*} find(X,U), \forall (T\leq U) \in X$
+%%   \IF {$S = \bot$}
+%%    \RETURN failure
+%%   \ENDIF
+%%   \STATE $Y \leftarrow Y \cup \{T=S\}$
+%%  \ENDIF
+%% \ENDFOR
+%% \end{algorithmic}
+%% \end{algorithm}
 
 When the argument types are not from the same family, we recur up the
 type hierarchy to see if any supertype of one of the arguments matches
@@ -1210,11 +1210,12 @@ is $\bot$.
 Finally, we apply the base case to intersect $sub$ with the type obtained
 by instantiating its family with parameter values in $E$.
 
+We use a simple algorithm to solve the type parameter constraints.
 Constraints $T\leq S$ where $S$ is a concrete type are converted to
 $T=S$ to help sharpen the result type.
-If Algorithm~\ref{alg5} identifies any conflicting constraints, the
-type intersection is empty. If each type variable has exactly one
-constraint $T=U$, we can simply substitute $find(X,U)$ for each occurrence
+If there are any conflicting constraints ($T=S$ and $T=U$ where $S\neq U$),
+the type intersection is empty. If each type variable has exactly one
+constraint $T=U$, we can substitute $find(X,U)$ for each occurrence
 of $T$ in the computed type intersection, and we have a final answer.
 $find$ works in the \emph{union-find} sense, following chains of equalities
 until we hit a non-variable or an unconstrained variable. Unconstrained
@@ -1839,7 +1840,7 @@ far seemed to strike a chord, as we have seen a significant community
 start to grow in the short time since then.
 
 Julia is an open source project, with all code hosted on {\tt github}.
-It has attracted 600 mailing list subscribers, 1500 github followers,
+It has attracted 550 mailing list subscribers, 1500 github followers,
 180 forks, and more than 50 total contributors. Text editor support
 has been implemented for emacs, vim, and textmate.
 Github recognizes Julia as the language of source files ending in
