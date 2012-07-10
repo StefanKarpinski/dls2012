@@ -212,6 +212,16 @@ and language design.
 %- can design library with conscious tradeoffs
 %- avoid premature optimization
 
+% most original contributions:
+
+% - a dynamic approach to type and method parameters ("static" parameters) that makes them less obtrusive. You can omit type parameters, in which case we effectively automatically supply an appropriate ad-hoc abstract supertype.
+% - using dynamic multiple dispatch as the only means of code selection.
+% - type-based method specialization heuristics
+% - singleton kinds, giving the benefits of method static parameters, but with ordinary argument passing instead of different syntax
+% - feeding back inferred types into the language, as in comprehensions. it might be sketchy, and Gilad Bracha might not like it, but as far as I know it has never been done in a dynamic language before.
+
+
+
 \section{Language Design}
 
 
@@ -234,7 +244,7 @@ allowing the issue of static types to be ignored when desired.
 \item Behavior that depends only on run-time types (i.e. no static overloading).
 \end{itemize}
 
-We explicitly forgo the following features in the interest of preserving
+We forgo the following features in the interest of preserving
 the possibility of static typing in a reasonably broad category of
 situations:
 
@@ -283,9 +293,9 @@ references, and are passed by reference as in LISP.
 
 % TODO: introduce <: syntax in this section
 
-Julia uses dynamic typing, which means that the universal type {\tt Any}
-is the only static type. Our design philosophy is that types should be
-quite expressive, but nearly invisible to the user.
+%Julia uses dynamic typing, which means that the universal type {\tt Any}
+%is the only static type. Our design philosophy is that types should be
+%quite expressive, but nearly invisible to the user.
 %Julia
 %programmers must be able to ignore the type system if they do
 %not wish to make explicit use of it.
@@ -297,26 +307,19 @@ at run time.
 Julia has five kinds of types:
 
 \begin{enumerate}
-\item abstract types, which may have explicitly-declared subtypes and supertypes
-\item composite types (similar to C structs), which have named fields and
-      explicitly-declared supertypes
+\item abstract types, which may have declared subtypes and supertypes
+\item composite types (similar to C structs\footnote{Currently, composite
+types are mutable, but we plan to make mutability optional.}), which have
+named fields and declared supertypes
 \item bits types, whose values are represented as bit strings, and which may
-      have explicitly-declared supertypes
+      have declared supertypes
 \item tuples, immutable ordered collections of values. The type of a tuple is
 defined recursively as a tuple of the types of the elements. Tuple types are
-covariant in their element types. A tuple is used to represent the type of a
-method's arguments.
+covariant (a tuple type is a subtype of another if
+its elements are subtypes of the corresponding elements of the other).
+A tuple is used to represent the type of a method's arguments.
 \item union types, abstract types constructed from other types via set union
 \end{enumerate}
-% TODO define covariant
-
-Abstract types, composite types, and bits types may have parameters, which
-makes it possible to express variants of a given type (for example, array types
-with different element types). These types are all invariant with respect to
-their parameters (i.e. two versions of the same type with different parameters
-are simply different, and have no subtype or supertype relationship). Type
-constructors are applied using curly braces, as in {\tt Array\{Float64,1\}}
-(the {\tt Array} type is parameterized by element type and rank).
 
 Bits types allow users to add new fixed-width number-like types and obtain the
 same performance that primitive numeric types enjoy in other systems. Julia's
@@ -337,12 +340,21 @@ a method might return an {\tt Int} or a {\tt String} in separate
 arms of a conditional. In this case its type can be inferred as
 {\tt Union(Int,String)}. Union types are also useful for defining
 ad-hoc type hierarchies different from those imagined when the types
-involved were first defined. For example, we could use
-{\tt Union(Int,Range{Int})} as the type of array indexes, even though
-there is no {\tt Index} type inherited by both constituents. Lastly,
+involved were first defined. Lastly,
 union types can be used to declare methods applicable to multiple types.
 
-\subsection{Notational Conveniences}
+
+\subsection{Type Parameters}
+
+Abstract types, composite types, and bits types may have parameters, which
+makes it possible to express variants of a given type (for example, array types
+with different element types). These types are all invariant with respect to
+their parameters (i.e. two versions of the same type with different parameters
+are simply different, and have no subtype relationship). Type
+constructors are applied using curly braces, as in {\tt Array\{Float64,1\}}
+(the {\tt Array} type is parameterized by element type and rank).
+
+% TODO
 
 An important goal is for users to be able to write Julia programs with
 virtually no knowledge of type system details. Therefore we allow writing
@@ -553,7 +565,9 @@ more specific than $B$. Rule 4 means that argument types are more important for
 specificity than argument count; if $A$ is {\tt (Int32...)} and $B$ is
 {\tt (Number, Number)} then $A$ is more specific.
 
-Julia uses \emph{symmetric} multiple dispatch, which means all argument types
+% TODO: specificity involving type parameters, \cite{modularmultipledispatch}
+
+Julia uses \emph{symmetric} multiple dispatch, which means all arguments
 are equally important. Therefore, ambiguous signatures are possible.
 For example, given {\tt foo(x::Number, y::Int)} and
 {\tt foo(x::Int, y::Number)} it is not clear which method to call when both
@@ -661,7 +675,7 @@ inferred, and using that type to construct a container before elements are
 computed.
 
 Modularity is a perennial difficulty with multiple dispatch, as any
-function may apply to any type, and there is no point where functions or
+function might apply to any type, and there is no point where functions or
 types are closed to future definitions. Thus at the moment Julia is
 essentially a whole-program compiler. We plan to implement a module system
 that will at least allow code to control which name bindings and definitions
@@ -908,11 +922,11 @@ converges.
 \end{algorithmic}
 \end{algorithm}
 
-Because this algorithm approximates run-time behavior, we are free to
-change it without affecting the behavior of user programs --- except
-that they might run faster. One valuable improvement is
-to attempt full evaluation of branch conditions, and remove branches
-with constant conditions.
+%Because this algorithm approximates run-time behavior, we are free to
+%change it without affecting the behavior of user programs --- except
+%that they might run faster. One valuable improvement is
+%to attempt full evaluation of branch conditions, and remove branches
+%with constant conditions.
 
 \subsection{Lattice Operators}
 
@@ -997,7 +1011,7 @@ the declared supertype of $A$.
 
 \subsubsection{Type Union}
 
-Since our type system explicitly supports unions, the union of $T$ and
+Since our type system directly supports unions, the union of $T$ and
 $S$ can be computed simply by constructing the type {\tt Union(T,S)}.
 An obvious simplification is performed: if one of $T$ or $S$ is a
 subtype of the other, it can be removed from the union. Nested union
@@ -1146,7 +1160,7 @@ type.
 \subsection{Code Generation and Optimization}
 
 After type inference is complete, we annotate each expression with its
-inferred type. We then run two symbolic optimization passes.
+inferred type. We then run two key optimization passes.
 If the inferred argument types in a method call
 indicate that a single method matches, we are free to inline that method.
 For methods that return multiple values, inlining often yields
@@ -1175,11 +1189,12 @@ method directly, skipping the dispatch process.
 Finally, we run several of LLVM's optimization passes.
 This provides standard scalar optimizations, such as
 strength reduction, dead code elimination, jump threading, and constant
-folding. When
-we are able to generate well-typed but messy code, LLVM gets us the
-rest of the way to competitive performance. We have found that care
-is needed in benchmarking: if the value computed by a loop is not
-used, in some cases LLVM has been able to delete the whole thing.
+folding.
+%When
+%we are able to generate well-typed but messy code, LLVM gets us the
+%rest of the way to competitive performance. We have found that care
+%is needed in benchmarking: if the value computed by a loop is not
+%used, in some cases LLVM has been able to delete the whole thing.
 
 
 \section{Example Use Cases}
@@ -1602,8 +1617,7 @@ learn.
 
 There is a rich history of efforts to improve the performance of
 dynamic languages. As in past efforts, our general approach is to
-remove the run-time type manipulations
-that characterize dynamic languages: checking, applying, and removing
+remove run-time type manipulations: checking, applying, and removing
 type tags \cite{taggingopt}, and dispatching functions based on
 type tags.
 
@@ -1621,29 +1635,29 @@ Lisp world (\cite{TICL}, \cite{pticl}, \cite{nimble}, \cite{taggingopt}),
 and in the world of object-oriented languages such as Self \cite{selflang}
 and JavaScript \cite{typeinfjavascript}.
 
-Dynamic type inference schemes obey a correctness property that
-inferred types must subsume all possible run-time
-types. A trivial correct algorithm can be obtained by always returning
-the \texttt{Any} type. Thus an advantage of dynamic type inference is
-that the inference algorithm can be separate from the language specification.
-This allows the compiler to evolve and improve without changing the set of
-valid programs and without updating documentation.
+%Dynamic type inference schemes obey a correctness property that
+%inferred types must subsume all possible run-time
+%types. A trivial correct algorithm can be obtained by always returning
+%the \texttt{Any} type. Thus an advantage of dynamic type inference is
+%that the inference algorithm can be separate from the language specification.
+%This allows the compiler to evolve and improve without changing the set of
+%valid programs and without updating documentation.
 
-Dynamic type inference can be defeated by systems with
-excessive type complexity. In these cases the alternate method of
-tracing \cite{tracingjit} might work better.
-The idea of tracing is to record type
-information as a program actually runs instead of trying to guess it in
-advance. Tracing is well known for its use in modern JavaScript
-implementations \cite{tracingjit2}.
-Tracing is appealing as a ``model-free'' approach that can work for
-essentially any language, no matter how uncooperative its design. The
-corresponding disadvantages are that it cannot completely eliminate type
-checks (or ``guards''), and that code must be interpreted with tracing overhead.
-When tracing fails to yield useful information, this overhead cannot be
-recovered and code might run slower than in the original system.
+%Dynamic type inference can be defeated by systems with
+%excessive type complexity. In these cases the alternate method of
+%tracing \cite{tracingjit} might work better.
+%The idea of tracing is to record type
+%information as a program actually runs instead of trying to guess it in
+%advance. Tracing is well known for its use in modern JavaScript
+%implementations \cite{tracingjit2}.
+%Tracing is appealing as a ``model-free'' approach that can work for
+%essentially any language, no matter how uncooperative its design. The
+%corresponding disadvantages are that it cannot completely eliminate type
+%checks (or ``guards''), and that code must be interpreted with tracing overhead.
+%When tracing fails to yield useful information, this overhead cannot be
+%recovered and code might run slower than in the original system.
 
-Yet another category of techniques involves altering a dynamic language
+Another category of techniques involves altering a dynamic language
 by imposing a static type system, as in Typed Scheme \cite{typedscheme}
 or an extended version of Dylan \cite{dylantypes}, or adding dynamic typing
 to a statically-typed
@@ -1733,7 +1747,7 @@ underscores the need for faster execution of these programs. The authors
 target library development as an especially important use case. The
 TL approach is fairly effective, but requires user
 annotations for peak performance. Julia's multimethods provide a way to
-collect type ``annotations'' in a less tedious manner---argument types
+collect type annotations in a less tedious manner---argument types
 specify dispatch behavior, so they are part of the functionality of a program
 instead of being extraneous information. The off-line library analysis step in
 TL is subsumed by the Julia compiler's routine
@@ -1806,7 +1820,7 @@ National Science Foundation grant CCF-0832997
 % The bibliography should be embedded for final submission.
 %\bibliography{julia-dls2012}
 
-\begin{thebibliography}{42}
+\begin{thebibliography}{40}
 \softraggedright
 
 \providecommand{\natexlab}[1]{#1}
@@ -1923,19 +1937,6 @@ C.~Chambers, D.~Ungar, and E.~Lee.
 %\newblock \doi{http://doi.acm.org/10.1145/74878.74884}.
 %\newblock URL \url{http://doi.acm.org/10.1145/74878.74884}.
 
-\bibitem[Chang et~al.(2009)Chang, Smith, Reitmaier, Bebenita, Gal, Wimmer,
-  Eich, and Franz]{tracingjit2}
-M.~Chang, E.~Smith, R.~Reitmaier, M.~Bebenita, A.~Gal, C.~Wimmer, B.~Eich, and
-  M.~Franz.
-\newblock Tracing for web 3.0: trace compilation for the next generation web
-  applications.
-\newblock In \emph{Proceedings of the 2009 ACM SIGPLAN/SIGOPS international
-  conference on Virtual execution environments}, VEE '09, pages 71--80, New
-  York, NY, USA, 2009. ACM.
-%\newblock ISBN 978-1-60558-375-4.
-%\newblock \doi{http://doi.acm.org/10.1145/1508293.1508304}.
-%\newblock URL \url{http://doi.acm.org/10.1145/1508293.1508304}.
-
 \bibitem[Chauhan and Kennedy(2001)]{telescopingvectorization}
 A.~Chauhan and K.~Kennedy.
 \newblock Optimizing strategies for telescoping languages: procedure strength
@@ -2019,20 +2020,6 @@ M.~Furr, J.-h.~D. An, J.~S. Foster, and M.~Hicks.
 %\newblock ISBN 978-1-60558-166-8.
 %\newblock \doi{http://doi.acm.org/10.1145/1529282.1529700}.
 %\newblock URL \url{http://doi.acm.org/10.1145/1529282.1529700}.
-
-\bibitem[Gal et~al.(2009)Gal, Eich, Shaver, Anderson, Mandelin, Haghighat,
-  Kaplan, Hoare, Zbarsky, Orendorff, Ruderman, Smith, Reitmaier, Bebenita,
-  Chang, and Franz]{tracingjit}
-A.~Gal, B.~Eich, M.~Shaver, D.~Anderson, D.~Mandelin, M.~R. Haghighat,
-  B.~Kaplan, G.~Hoare, B.~Zbarsky, J.~Orendorff, J.~Ruderman, E.~W. Smith,
-  R.~Reitmaier, M.~Bebenita, M.~Chang, and M.~Franz.
-\newblock Trace-based just-in-time type specialization for dynamic languages.
-\newblock In \emph{Proceedings of the 2009 ACM SIGPLAN conference on
-  Programming language design and implementation}, PLDI '09, pages 465--478,
-  New York, NY, USA, 2009. ACM.
-%\newblock ISBN 978-1-60558-392-1.
-%\newblock \doi{http://doi.acm.org/10.1145/1542476.1542528}.
-%\newblock URL \url{http://doi.acm.org/10.1145/1542476.1542528}.
 
 \bibitem[Gomez(1999)]{scilab}
 C.~Gomez, editor.
