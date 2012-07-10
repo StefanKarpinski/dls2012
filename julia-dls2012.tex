@@ -150,6 +150,10 @@ requirement with usability, we have attempted to design the
 We provide these features without a concept of static application
 (e.g. template instantiation), without distinct type and expression
 contexts, and leaving parameters optional whenever possible.
+Dynamic languages need parametric types so a compiler can keep track
+of the types of values even when they are stored in shared mutable data
+structures (optimizing compilers would need this feature even if the
+types are not exposed in the language as they are in Julia).
 
 %To add usability to this flexibility,
 %types can generally be ignored when not used to specify dispatch behavior.
