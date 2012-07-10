@@ -65,41 +65,21 @@ dynamic environments such as \Matlab, R\cite{Rlang}, SciPy\cite{numpy},
 Octave \cite{Octave}, and SciLab \cite{scilab} provide greatly increased
 convenience and productivity. Despite the tremendous productivity gains, C
 and Fortran remain the gold standard languages for the most essential
-parts of technical computing: high-level dynamic languages still lack
-sufficient speed and control over memory usage and layout for the most
-CPU- and memory-intensive tasks. As a result, the most challenging areas
-of technical computing have benefited the least from the increased
+parts of technical computing because high-level dynamic languages still
+lack sufficient performance. As a result, the most challenging areas of
+technical computing have benefited the least from the increased
 abstraction and productivity offered by higher level languages.
-% This phenomenon is not only witnessed by the dominance of static languages
-% in libraries providing key technical computing kernels, but also in the
-% fact that the core functionality of systems such as \Matlab, R and SciPy
-% is implemented in C, rather than being implemented in the higher level
-% language itself.
 
-The Julia language aims to extend the greater abstraction, leverage,
-convenience and productivity of a very high-level, dynamic environment to
-areas of numerical computing where speed and memory demands have
-traditionally required the use of low-level, static languages. Our two
-criteria for accomplishing this goal are:
-\begin{enumerate}
-\item Speed approaching that of C and Fortran for most code;
-\item Sufficient control over memory layout, especially for arrays.
-\end{enumerate}
-Julia's speed need not always match that of Fortran and C, but ought to do
-so in the cases of basic integer and floating-point arithmetic and scalar
-loops involving such operations. Likewise, Julia does not need to provide
-the exact, explicit control of memory usage that C offers to systems
-programmers, but does need to provide efficiently stored arrays and other
-structures.
-
-The result is a two-tiered software world, where C and Fortran are
-used for key libraries and production code, while high-level languages
-are used for prototyping, interaction, and scripting workflow.  A new
-approach to dynamic language design can change this situation,
-providing productivity and performance in one
-package. We should embrace the emerging preference for dynamic
-languages, and ask how these systems can better provide for the
-future of technical computing.
+The performance gap between high-level, dynamic languages and low-level,
+static languages leaves scientific computing divided: C and Fortran are
+used for crucial libraries and production code, while high-level languages
+are used for prototyping, interaction, and scripting workflow. A fresh
+approach to dynamic language design can change this situation, providing
+productivity and performance in one system. The Julia language aims to
+extend the greater abstraction, leverage, convenience and productivity of
+a very high-level, dynamic environment to areas of numerical computing
+where performance demands have traditionally required the use of
+low-level, static languages.
 
 A technical computing language balances the preferences of the end
 user, the library developer, and the language designer.
