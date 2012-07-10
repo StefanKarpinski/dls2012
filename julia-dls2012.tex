@@ -155,39 +155,6 @@ built in to the compiler. New users are able to read the standard
 library code, and modify it, imitate it, or extend it for their own
 purposes.
 
-%Ultimately, performance is about flexibility, not just getting answers
-%faster.
-
-%% Ultimately, performance is about more than getting
-%% an answer faster; it is about expressivity and flexibility. Our core
-%% strategy for achieving this is to employ a sophisticated type system that can
-%% nevertheless be ignored by users who aren't interested in it. The type
-%% system becomes, in a sense, an optional tool for library writers.
-
-%% often languages start with a performance or parallelization goal and work
-%% from there. we start from the opposite direction, designing for maximum
-%% flexibility and ease-of-use, and betting that this power can be leveraged to
-%% meet increasingly ambitious performance goals. One area where a flexible
-%% high-level language can potentially help performance is custom code
-%% generation. Often hand-written C code is impractical or insufficient for
-%% obtaining the highest performance. Julia's type inference and JIT compiler
-%% make it easier to generate efficient code at a more abstract, symbolic level.
-
-%%% NOTE: nominated for deletion by JWB
-%% Many of the ideas explored here are not exclusively applicable to technical
-%% computing, but we have chosen to target that application area for several
-%% reasons. First, technical computing has unique concerns that can be
-%% especially awkward or inefficient to handle in existing dynamic languages.
-%% Examples include the need for a wide variety of numeric types, and the need for
-%% efficient arrays of those types. Second, the performance
-%% of high-level technical computing languages has begun to seriously lag behind
-%% that of more mainstream languages (notably JavaScript), creating a present
-%% need for attempts to improve the situation.
-%% General-purpose languages like Java or perhaps even JavaScript could
-%% be used for technical computing, but we feel the community will continue to
-%% prefer environments that cater to its syntactic needs, and are able to
-%% prioritize issues of numerical accuracy and performance.
-
 %\section{The Essence of Julia}
 
 Julia's primary means of abstraction is dynamic multiple dispatch.
@@ -197,6 +164,9 @@ instruction selection. We use only dynamic multiple dispatch for this
 purpose, which is possible through sufficiently expressive
 dispatch rules. To add usability to this flexibility,
 types can generally be ignored when not used to specify dispatch behavior.
+
+% we should say that we've tried to design the ``easy version'' of some
+% fancy type system features
 
 Types may optionally be used to make declarations, which are considered by
 the compiler and checked at run time when necessary. However, we do not
@@ -220,20 +190,35 @@ and language design.
 % - singleton kinds, giving the benefits of method static parameters, but with ordinary argument passing instead of different syntax
 % - feeding back inferred types into the language, as in comprehensions. it might be sketchy, and Gilad Bracha might not like it, but as far as I know it has never been done in a dynamic language before.
 
+% could be good intro material
+%% With type inference in mind from the beginning, unnecessary type complexity
+%% could be removed and a better overall system may result.
+%% Most importantly, the goal should not be just to make a dynamic language
+%% faster or safer, but to provide more power at the same time.
+%% When we go to great lengths to make dynamic
+%% languages perform well, we should ask what else we can get for the same
+%% level of effort. Julia answers this question by employing more
+%% sophisticated types and dispatch rules that would make the language even
+%% slower without our compiler.
 
 
 \section{Language Design}
 
+In past work on optimizing dynamic languages, researchers have observed that
+programs are not as dynamic as their authors might think:
+``We found that dynamic
+features are pervasive throughout the benchmarks and the libraries they
+include, but that most uses of these features are highly constrained...''
+\cite{profileguided}. In this sense, the designs of existing dynamic languages
+do not present a good trade-off. Much code is statically-typeable and could be
+executed more efficiently, but the language designs and implementations do not
+anticipate this fact. As Henry Baker observes of Common LISP, ``...the
+polymorphic type complexity of the Common LISP library functions is mostly
+gratuitous, and both the efficiency of compiled code and the efficiency of the
+programmer could be increased by rationalizing this complexity.''\cite{nimble}
+Others have echoed these sentiments \cite{lispcrit}.
 
-Static typing appears to have many advantages from a theoretical
-standpoint: earlier error detection, generally better performance, and
-support for more accurate tools are often cited.
-Nevertheless, developers are ``voting with their code'' for languages that
-lack static typing disciplines. This is the phenomenon that Julia's
-design addresses, and as such we must present our view of the advantages of
-dynamic languages.
-We hypothesize that the following forms of ``dynamism'' are
-the most useful:
+We hypothesize that the following forms of ``dynamism'' are the most useful:
 
 \begin{itemize}
 \item The ability to run code at load time and compile time, eliminating
@@ -244,9 +229,9 @@ allowing the issue of static types to be ignored when desired.
 \item Behavior that depends only on run-time types (i.e. no static overloading).
 \end{itemize}
 
-We forgo the following features in the interest of preserving
-the possibility of static typing in a reasonably broad category of
-situations:
+Julia avoids some of the ``overly permissive'' features of systems like
+CLOS \cite{clostrophobia} that get in the way of compiler optimizations,
+using the following restrictions:
 
 \begin{itemize}
 \item Types themselves are immutable.
@@ -256,7 +241,7 @@ situations:
 \item Not all bindings are mutable ({\tt const} identifiers are allowed).
 \end{itemize}
 
-This set of restrictions allows the compiler to see all uses of local
+These restrictions allow the compiler to see all uses of local
 variables, and perform dataflow analysis on local variables using only
 local information. This is important, since it allows user code to call
 statically-unknown functions without interfering with optimizations done
@@ -291,15 +276,6 @@ references, and are passed by reference as in LISP.
 
 \subsection{Types}
 
-% TODO: introduce <: syntax in this section
-
-%Julia uses dynamic typing, which means that the universal type {\tt Any}
-%is the only static type. Our design philosophy is that types should be
-%quite expressive, but nearly invisible to the user.
-%Julia
-%programmers must be able to ignore the type system if they do
-%not wish to make explicit use of it.
-
 Julia treats types as symbolic descriptions of sets of values. Every value has
 a unique, immutable, run-time implementation type. Objects carry type tags, and
 types themselves are Julia objects that can be created and inspected
@@ -307,18 +283,15 @@ at run time.
 Julia has five kinds of types:
 
 \begin{enumerate}
-\item abstract types, which may have declared subtypes and supertypes
-\item composite types (similar to C structs\footnote{Currently, composite
+\item Abstract types, which may have declared subtypes and supertypes
+      (a subtype relation is declared using the notation {\tt Sub~<:~Super})
+\item Composite types (similar to C structs\footnote{Currently, composite
 types are mutable, but we plan to make mutability optional.}), which have
 named fields and declared supertypes
-\item bits types, whose values are represented as bit strings, and which may
+\item Bits types, whose values are represented as bit strings, and which
       have declared supertypes
-\item tuples, immutable ordered collections of values. The type of a tuple is
-defined recursively as a tuple of the types of the elements. Tuple types are
-covariant (a tuple type is a subtype of another if
-its elements are subtypes of the corresponding elements of the other).
-A tuple is used to represent the type of a method's arguments.
-\item union types, abstract types constructed from other types via set union
+\item Tuples, immutable ordered collections of values
+\item Union types, abstract types constructed from other types via set union
 \end{enumerate}
 
 Bits types allow users to add new fixed-width number-like types and obtain the
@@ -328,6 +301,11 @@ is based on types rather than field lookup, so whether a value is of a bits
 type or composite type is a representation detail that is generally
 invisible.
 
+Tuples are used to represent the types of method arguments and multiple
+return values. The type of a tuple is
+defined recursively as a tuple of the types of its elements. Tuple types are
+covariant; a tuple type is a subtype of another if
+its elements are subtypes of the corresponding elements of the other.
 Tuple types may end in a special {\tt ...} type that
 indicates any number of elements may be added. This is used to express the
 types of variadic methods. For example the type {\tt (String, Int...)}
@@ -354,14 +332,17 @@ are simply different, and have no subtype relationship). Type
 constructors are applied using curly braces, as in {\tt Array\{Float64,1\}}
 (the {\tt Array} type is parameterized by element type and rank).
 
-% TODO
+Type parameters may have bounds \cite{boundedquant}, also declared using
+the {\tt <:} operator, as in {\tt Rational\{T<:Integer\}}.
+% ... more?
 
-An important goal is for users to be able to write Julia programs with
-virtually no knowledge of type system details. Therefore we allow writing
+To help meet our goal of convenience, we allow writing
 parametric types without parameters, or omitting trailing parameters.
-{\tt Array} refers to any kind of dense array, {\tt Array\{Float64\}} refers
-to a Float64 Array of any rank, and {\tt Array\{Float64,2\}} refers to a
-2-dimensional Float64 Array.
+{\tt Array} refers to any kind of dense array, and {\tt Array\{Float64\}}
+refers to a Float64 Array of any rank.
+The result of one of these expressions is effectively an ad-hoc abstract
+supertype of all instantiations one could obtain by filling in the missing
+parameters.
 
 This design also makes it easy to add parameters to types later; existing
 code does not need to be modified.
@@ -377,7 +358,8 @@ invoked. Generic functions have appeared in several object systems in the past,
 notably CLOS \cite{closoverview} and Dylan \cite{dylanlang}.
 Julia is distinguished from these in that
 it uses generic functions as its primary abstraction mechanism, putting it in
-the company of research languages like Diesel \cite{dieselspec}. Aside
+the company of research languages like Diesel \cite{dieselspec} and Cecil
+\cite{cecil}. Aside
 from being practical for mathematical styles of programming,
 this design is satisfying also because it permits
 expression of most of the popular patterns of object-oriented programming,
@@ -540,8 +522,7 @@ since specificity is a partial order.}
 predicate is quite similar to the subtype
 predicate, since a type that is a subtype of another is indeed more specific
 than it. However, a few additional rules are necessary to capture the
-intuitive concept of ``more specific''. In fact until this point
-``more specific'' has had no formal meaning; its formal definition is
+intuitive concept of ``more specific''. Our formal definition is
 summarized as the disjunction of the following rules ($A$ is more specific
 than $B$ if):
 
@@ -554,6 +535,9 @@ not equal to $B$, and $B$ is not more specific than $A$
 \item $A$ and $B$ are tuple types, $A$ ends in a vararg ({\tt ...}) type,
 and $A$ would be more specific than $B$ if its vararg type were expanded to
 give it the same number of elements as $B$
+\item $A$ and $B$ have parameters and compatible structures, and $A$
+provides a consistent assignment for $B$'s parameters, but not the other
+way around
 \end{enumerate}
 
 Rule 2 means that declared subtypes are always more specific than their
@@ -565,7 +549,13 @@ more specific than $B$. Rule 4 means that argument types are more important for
 specificity than argument count; if $A$ is {\tt (Int32...)} and $B$ is
 {\tt (Number, Number)} then $A$ is more specific.
 
-% TODO: specificity involving type parameters, \cite{modularmultipledispatch}
+Rule 5 makes diagonal constraints more specific; $\forall T (T,T)$ is more
+specific than $\forall X,Y (X,Y)$.
+The specificity of a type variable is determined extensionally, i.e.
+according to the set of values it would ultimately encompass. For example,
+{\tt T~<:~Number} has the same specificity as {\tt Number}. This approach
+has been found useful in past work combining parametric types and multiple
+dispatch \cite{modularmultipledispatch}.
 
 Julia uses \emph{symmetric} multiple dispatch, which means all arguments
 are equally important. Therefore, ambiguous signatures are possible.
@@ -773,9 +763,15 @@ important than the heuristics described above.
 Types of program expressions and variables are inferred by forward
 dataflow analysis\footnote{Adding a reverse dataflow pass could potentially
 improve type information, but we have not yet done this.}.
-A key feature of this form of type inference is that variable types are
-inferred at each use, since assignment is allowed to change the type of
-a variable.
+The original algorithm for such {\it dynamic type inference} was given by
+Kaplan and Ullman \cite{kaplanullman}.
+This is different from type inference in the ML family of languages
+\cite{MLtypeinf}, where the compiler \emph{must} be able to determine
+types, using an algorithm based on unification. Dynamic type inference
+has been applied to LISP \cite{TICL} \cite{pticl} \cite{nimble},
+and object-oriented languages such as Self \cite{selflang} and
+JavaScript \cite{typeinfjavascript}.
+
 We determine a maximum fixed-point (MFP) solution using
 Algorithm~\ref{alg1}, based on
 Mohnen's graph-free dataflow analysis framework \cite{graphfree}. The basic
@@ -785,6 +781,10 @@ type information from each statement eventually propagates to all other
 statements reachable by control flow. We augment the basic algorithm with
 support for mutually-recursive functions
 (functions are treated as program points that might need to be revisited).
+
+%A key feature of this form of type inference is that variable types are
+%inferred at each use, since assignment is allowed to change the type of
+%a variable.
 
 The origin of the type information used by the MFP algorithm is
 evaluation of known functions over the type domain \cite{abstractinterp}.
@@ -949,10 +949,9 @@ to the usual \emph{type imprecision} (not knowing the type of a value),
 we must also model \emph{type uncertainty}, where a type itself is
 known imprecisely. A common example is application of the {\tt typeof}
 primitive to a value of imprecise type. What is the abstract result of
-{\tt typeof(x::Number)}? We handle this with a special type kind that
-represents a \emph{range} rather than a point within the type lattice.
-These kinds are essentially the type variables used in bounded
-polymorphism \cite{boundedquant}. In this example, the
+{\tt typeof(x::Number)}? We handle this using bounded type variables,
+effectively representing a \emph{range} rather than a point within the
+type lattice. In this example, the
 transfer function for {\tt typeof} is allowed to return
 {\tt Type\{T<:Number\}}, where {\tt T} is a new type variable.
 
@@ -1613,167 +1612,45 @@ learn.
 %~3000 lines examples
 %~4000 lines of test code
 
-\section{Related Work}
+%\section{Related Work}
 
-There is a rich history of efforts to improve the performance of
-dynamic languages. As in past efforts, our general approach is to
-remove run-time type manipulations: checking, applying, and removing
-type tags \cite{taggingopt}, and dispatching functions based on
-type tags.
+%% The telescoping languages (TL) project \cite{telescoping} shares many of our
+%% goals, especially with respect to the domain of scientific computing.
+%% TL optimizes programs in \Matlab and
+%% R by pre-processing those systems' standard libraries to
+%% generate a compiler that knows about commonly-used routines in order
+%% to optimize uses of them in subject programs. This project dramatically
+%% underscores the need for faster execution of these programs. The authors
+%% target library development as an especially important use case. The
+%% TL approach is fairly effective, but requires user
+%% annotations for peak performance. Julia's multimethods provide a way to
+%% collect type annotations in a less tedious manner---argument types
+%% specify dispatch behavior, so they are part of the functionality of a program
+%% instead of being extraneous information. The off-line library analysis step in
+%% TL is subsumed by the Julia compiler's routine
+%% type analysis and its ability to cache type information to disk. Julia
+%% uses a mostly run-time compilation model, contrasted with TL's static
+%% generation of C or Fortran code. This enables an additional category of
+%% library implementation techniques where needed code can be generated on demand.
 
-Kaplan and Ullman produced an optimal algorithm
-for dynamic type inference \cite{kaplanullman}, where the compiler
-attempts to guess what the run-time types of values will be.
-Inference is cast as a maximum-fixed-point dataflow problem.
-This is different from type inference in the ML family of languages
-\cite{MLtypeinf}, where the compiler \emph{must} be able to determine
-types, using an algorithm based on unification.
-Dynamic type inference is typically applied to an existing language
-with the hope of improving performance or safety. There are several
-examples in the
-Lisp world (\cite{TICL}, \cite{pticl}, \cite{nimble}, \cite{taggingopt}),
-and in the world of object-oriented languages such as Self \cite{selflang}
-and JavaScript \cite{typeinfjavascript}.
+%% Of course, working on existing \Matlab code is TL's greatest
+%% asset and greatest challenge. Other \Matlab language compilers
+%% have been developed, such as FALCON \cite{falcon}. The MathWorks now
+%% includes a JIT compiler in their product, and other JIT compilers such
+%% as MaJIC \cite{majic} have been described.
+%% Like Julia, the McVM \cite{matlabspecializer} implementation of
+%% \Matlab uses function specialization based on run-time types.
+%% However, their analysis by necessity includes details of
+%% \Matlab's data model that we prefer to leave out of the
+%% compiler, and they do not consider techniques
+%% for automatically reducing the amount of function specialization.
 
-%Dynamic type inference schemes obey a correctness property that
-%inferred types must subsume all possible run-time
-%types. A trivial correct algorithm can be obtained by always returning
-%the \texttt{Any} type. Thus an advantage of dynamic type inference is
-%that the inference algorithm can be separate from the language specification.
-%This allows the compiler to evolve and improve without changing the set of
-%valid programs and without updating documentation.
-
-%Dynamic type inference can be defeated by systems with
-%excessive type complexity. In these cases the alternate method of
-%tracing \cite{tracingjit} might work better.
-%The idea of tracing is to record type
-%information as a program actually runs instead of trying to guess it in
-%advance. Tracing is well known for its use in modern JavaScript
-%implementations \cite{tracingjit2}.
-%Tracing is appealing as a ``model-free'' approach that can work for
-%essentially any language, no matter how uncooperative its design. The
-%corresponding disadvantages are that it cannot completely eliminate type
-%checks (or ``guards''), and that code must be interpreted with tracing overhead.
-%When tracing fails to yield useful information, this overhead cannot be
-%recovered and code might run slower than in the original system.
-
-Another category of techniques involves altering a dynamic language
-by imposing a static type system, as in Typed Scheme \cite{typedscheme}
-or an extended version of Dylan \cite{dylantypes}, or adding dynamic typing
-to a statically-typed
-language \cite{dyntype}. Gradual typing \cite{gradualobjects} allows programs
-to contain both statically-checked and run-time-checked components.
-
-These techniques continue to be enhanced and applied to the current
-generation of scripting languages. DRuby \cite{druby} adds static
-type inference to Ruby. PRuby \cite{profileguided} extends this system to
-support highly dynamic constructs such as \texttt{eval}. RubyDust
-\cite{rubydust} uses a combination of constraint resolution and trace
-information to infer types.
-
-In this body of work it is commonly observed that dynamic language programs
-are not as dynamic as their authors might think: ``We found that dynamic
-features are pervasive throughout the benchmarks and the libraries they
-include, but that most uses of these features are highly constrained...''
-\cite{profileguided}. In this sense, the designs of existing dynamic languages
-do not present a good trade-off. Much code is statically-typeable and could be
-executed more efficiently, but the language designs and implementations do not
-anticipate this fact. As Henry Baker observes of Common Lisp, ``...the
-polymorphic type complexity of the Common Lisp library functions is mostly
-gratuitous, and both the efficiency of compiled code and the efficiency of the
-programmer could be increased by rationalizing this complexity.''\cite{nimble}
-Others have echoed these sentiments \cite{lispcrit}.
-
-With type inference in mind from the beginning, unnecessary type complexity
-could be removed and a better overall system may result.
-Most importantly, the goal should not be just to make a dynamic language
-faster or safer, but to provide a more powerful language at the same time.
-%For example, in applying type inference to a pre-existing language, it is
-%typically useful
-%to employ a finer type lattice than that provided by the original language
-%(e.g. splitting integers into positive and negative subtypes).
-%In some sense, this is unfortunate, as the
-%extra expressiveness provided by these types is not available to the programmer
-%for use in declarations, typecase statements, and the like.
-In light of the speedups possible with the techniques cited here, many common
-features of these languages can be seen as premature optimizations---for
-example employing only single dispatch and simple type systems (or, to be
-precise, ``tag systems''). When we go to great lengths to make dynamic
-languages perform well, we should ask what else we can get for the same
-level of effort. Julia answers this question by employing more
-sophisticated types and dispatch rules that would make the language even
-slower without our compiler.
-
-Generic functions famously appeared in the Common Lisp
-Object System (CLOS) \cite{closoverview} \cite{closspec}, and has been the
-subject of research languages such as Cecil \cite{cecil} and
-Diesel \cite{dieselspec}.
-%We find this style to be a good fit for
-%mathematical programming, where operators are typically defined for many
-%different combinations of arguments. In our context, an invaluable
-%feature of generic functions is that they permit overloading for a variety
-%of reasons: not just specializing behavior for subclasses, but for
-%special cases that can be implemented more efficiently.
-%We also find it a great simplification to support only
-%generic functions, and not the usual mix including instance methods and
-%class methods.
-Julia avoids some of the ``overly permissive'' features of
-CLOS \cite{clostrophobia} that get in the way of compiler optimizations.
-
-The Dylan language \cite{dylanlang} is close in spirit to
-the present work. It is also a dynamic language with multiple dispatch,
-designed with high performance as a goal. However, in Julia,
-automatic specialization is the primary source of type information, rather
-than user-supplied type declarations. We also explore the potential of
-automatic mechanisms for avoiding a combinatorial explosion of method
-specializations.
-Unlike Dylan, Julia does not make the distinction between generic functions
-and methods visible to the user---functions with the same name are simply
-combined into one generic function without restrictions.
-Julia method argument specializers also have a few more features
-useful for defining the highly polymorphic operators needed in technical
-computing. In Julia we also use our type machinery to introduce an
-extensible type promotion system, which allows operators to support all
-relevant combinations of arguments without requiring a large number
-of definitions for each new type.
-
-The telescoping languages (TL) project \cite{telescoping} shares many of our
-goals, especially with respect to the domain of scientific computing.
-TL optimizes programs in \Matlab and
-R by pre-processing those systems' standard libraries to
-generate a compiler that knows about commonly-used routines in order
-to optimize uses of them in subject programs. This project dramatically
-underscores the need for faster execution of these programs. The authors
-target library development as an especially important use case. The
-TL approach is fairly effective, but requires user
-annotations for peak performance. Julia's multimethods provide a way to
-collect type annotations in a less tedious manner---argument types
-specify dispatch behavior, so they are part of the functionality of a program
-instead of being extraneous information. The off-line library analysis step in
-TL is subsumed by the Julia compiler's routine
-type analysis and its ability to cache type information to disk. Julia
-uses a mostly run-time compilation model, contrasted with TL's static
-generation of C or Fortran code. This enables an additional category of
-library implementation techniques where needed code can be generated on demand.
-
-Of course, working on existing \Matlab code is TL's greatest
-asset and greatest challenge. Other \Matlab language compilers
-have been developed, such as FALCON \cite{falcon}. The MathWorks now
-includes a JIT compiler in their product, and other JIT compilers such
-as MaJIC \cite{majic} have been described.
-Like Julia, the McVM \cite{matlabspecializer} implementation of
-\Matlab uses function specialization based on run-time types.
-However, their analysis by necessity includes details of
-\Matlab's data model that we prefer to leave out of the
-compiler, and they do not consider techniques
-for automatically reducing the amount of function specialization.
-
-Some of these systems, including TL,
-have implemented advanced optimizations
-for vectorization \cite{telescopingvectorization} and array size analysis
-\cite{slicehoisting} that we have yet to explore. However, we feel Julia's
-open-source nature and powerful, ``clean slate'' base system would provide
-an excellent platform for such future work.
+%% Some of these systems, including TL,
+%% have implemented advanced optimizations
+%% for vectorization \cite{telescopingvectorization} and array size analysis
+%% \cite{slicehoisting} that we have yet to explore. However, we feel Julia's
+%% open-source nature and powerful, ``clean slate'' base system would provide
+%% an excellent platform for such future work.
 
 
 \section{Community}
@@ -1810,9 +1687,10 @@ and compiler, pushing the standard of productivity ever higher.
 %This is the text of the appendix, if you need one.
 
 \acks 
-We wish to thank our funding agencies for support from
-Department of Energy grant DE-SC0002099, National Science Foundation
-grant CCF-0832997, also grants from VMWare and Citigroup.
+We wish to thank our funding agencies for their support via
+Department of Energy grant DE-SC0002099 and National Science Foundation
+grant CCF-0832997. We also gratefully acknowledge gifts from
+VMWare and Citigroup.
 
 % We recommend abbrvnat bibliography style.
 
@@ -1821,7 +1699,7 @@ grant CCF-0832997, also grants from VMWare and Citigroup.
 % The bibliography should be embedded for final submission.
 %\bibliography{julia-dls2012}
 
-\begin{thebibliography}{40}
+\begin{thebibliography}{27}
 \softraggedright
 
 \providecommand{\natexlab}[1]{#1}
@@ -1830,22 +1708,18 @@ grant CCF-0832997, also grants from VMWare and Citigroup.
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
 
-\bibitem[Almasi and Padua(2001)]{majic}
-G.~Almasi and D.~Padua.
-\newblock Majic: A matlab just-in-time compiler.
-\newblock In S.~Midkiff, J.~Moreira, M.~Gupta, S.~Chatterjee, J.~Ferrante,
-  J.~Prins, W.~Pugh, and C.-W. Tseng, editors, \emph{Languages and Compilers
-  for Parallel Computing}, volume 2017 of \emph{Lecture Notes in Computer
-  Science}, pages 68--81. Springer Berlin / Heidelberg, 2001.
-%\newblock ISBN 978-3-540-42862-6.
-
-\bibitem[An et~al.(2011)An, Chaudhuri, Foster, and Hicks]{rubydust}
-J.-h.~D. An, A.~Chaudhuri, J.~S. Foster, and M.~Hicks.
-\newblock Dynamic inference of static types for ruby.
-\newblock \emph{SIGPLAN Not.}, 46:\penalty0 459--472, Jan. 2011.
-%\newblock ISSN 0362-1340.
-%\newblock \doi{http://doi.acm.org/10.1145/1925844.1926437}.
-%\newblock URL \url{http://doi.acm.org/10.1145/1925844.1926437}.
+\bibitem[Allen et~al.(2011)Allen, Hilburn, Kilpatrick, Luchangco, Ryu, Chase,
+  and Steele]{modularmultipledispatch}
+E.~Allen, J.~Hilburn, S.~Kilpatrick, V.~Luchangco, S.~Ryu, D.~Chase, and
+  G.~Steele.
+\newblock Type checking modular multiple dispatch with parametric polymorphism
+  and multiple inheritance.
+\newblock In \emph{Proceedings of the 2011 ACM international conference on
+  Object oriented programming systems languages and applications}, OOPSLA '11,
+  pages 973--992, New York, NY, USA, 2011. ACM.
+%\newblock ISBN 978-1-4503-0940-0.
+%\newblock \doi{10.1145/2048066.2048140}.
+%\newblock URL \url{http://doi.acm.org/10.1145/2048066.2048140}.
 
 \bibitem[Anderson et~al.(2005)Anderson, Giannini, and
   Drossopoulou]{typeinfjavascript}
@@ -1877,16 +1751,6 @@ R.~D. Beer.
 %\newblock ISSN 1045-3563.
 %\newblock \doi{http://doi.acm.org/10.1145/1317193.1317195}.
 %\newblock URL \url{http://doi.acm.org/10.1145/1317193.1317195}.
-
-\bibitem[Bobrow et~al.(1988)Bobrow, DeMichiel, Gabriel, Keene, Kiczales, and
-  Moon]{closspec}
-D.~G. Bobrow, L.~G. DeMichiel, R.~P. Gabriel, S.~E. Keene, G.~Kiczales, and
-  D.~A. Moon.
-\newblock Common lisp object system specification.
-\newblock \emph{SIGPLAN Not.}, 23:\penalty0 1--142, September 1988.
-%\newblock ISSN 0362-1340.
-%\newblock \doi{http://doi.acm.org/10.1145/885631.885632}.
-%\newblock URL \url{http://doi.acm.org/10.1145/885631.885632}.
 
 \bibitem[Bolz et~al.(2009)Bolz, Cuni, Fijalkowski, and Rigo]{pypyjit}
 C.~F. Bolz, A.~Cuni, M.~Fijalkowski, and A.~Rigo.
@@ -1938,33 +1802,6 @@ C.~Chambers, D.~Ungar, and E.~Lee.
 %\newblock \doi{http://doi.acm.org/10.1145/74878.74884}.
 %\newblock URL \url{http://doi.acm.org/10.1145/74878.74884}.
 
-\bibitem[Chauhan and Kennedy(2001)]{telescopingvectorization}
-A.~Chauhan and K.~Kennedy.
-\newblock Optimizing strategies for telescoping languages: procedure strength
-  reduction and procedure vectorization.
-\newblock In \emph{Proceedings of the 15th international conference on
-  Supercomputing}, ICS '01, pages 92--101, New York, NY, USA, 2001. ACM.
-%\newblock ISBN 1-58113-410-X.
-%\newblock \doi{http://doi.acm.org/10.1145/377792.377812}.
-%\newblock URL \url{http://doi.acm.org/10.1145/377792.377812}.
-
-\bibitem[Chauhan and Kennedy(2004)]{slicehoisting}
-A.~Chauhan and K.~Kennedy.
-\newblock Slice-hoisting for array-size inference in matlab.
-\newblock In L.~Rauchwerger, editor, \emph{Languages and Compilers for Parallel
-  Computing}, volume 2958 of \emph{Lecture Notes in Computer Science}, pages
-  495--508. Springer Berlin / Heidelberg, 2004.
-%\newblock ISBN 978-3-540-21199-0.
-
-\bibitem[Chevalier-Boisvert et~al.(2010)Chevalier-Boisvert, Hendren, and
-  Verbrugge]{matlabspecializer}
-M.~Chevalier-Boisvert, L.~Hendren, and C.~Verbrugge.
-\newblock Optimizing matlab through just-in-time specialization.
-\newblock In R.~Gupta, editor, \emph{Compiler Construction}, volume 6011 of
-  \emph{Lecture Notes in Computer Science}, pages 46--65. Springer Berlin /
-  Heidelberg, 2010.
-%\newblock ISBN 978-3-642-11969-9.
-
 \bibitem[Cousot and Cousot(1977)]{abstractinterp}
 P.~Cousot and R.~Cousot.
 \newblock Abstract interpretation: a unified lattice model for static analysis
@@ -1984,18 +1821,6 @@ P.~Cousot and R.~Cousot.
   Computer Science}, pages 269--295. Springer Berlin / Heidelberg, 1992.
 %\newblock ISBN 978-3-540-55844-6.
 
-\bibitem[De~Rose et~al.(1996)De~Rose, Gallivan, Gallopoulos, Marsolf, and
-  Padua]{falcon}
-L.~De~Rose, K.~Gallivan, E.~Gallopoulos, B.~Marsolf, and D.~Padua.
-\newblock Falcon: A matlab interactive restructuring compiler.
-\newblock In C.-H. Huang, P.~Sadayappan, U.~Banerjee, D.~Gelernter, A.~Nicolau,
-  and D.~Padua, editors, \emph{Languages and Compilers for Parallel Computing},
-  volume 1033 of \emph{Lecture Notes in Computer Science}, pages 269--288.
-  Springer Berlin / Heidelberg, 1996.
-%\newblock ISBN 978-3-540-60765-6.
-%\newblock URL \url{http://dx.doi.org/10.1007/BFb0014205}.
-%\newblock 10.1007/BFb0014205.
-
 \bibitem[DeMichiel and Gabriel(1987)]{closoverview}
 L.~DeMichiel and R.~Gabriel.
 \newblock The common lisp object system: An overview.
@@ -2005,45 +1830,18 @@ L.~DeMichiel and R.~Gabriel.
   Berlin / Heidelberg, 1987.
 %\newblock ISBN 978-3-540-18353-2.
 
-\bibitem[Furr et~al.(2009{\natexlab{a}})Furr, An, and Foster]{profileguided}
+\bibitem[Furr et~al.(2009)Furr, An, and Foster]{profileguided}
 M.~Furr, J.-h.~D. An, and J.~S. Foster.
 \newblock Profile-guided static typing for dynamic scripting languages.
-\newblock \emph{SIGPLAN Not.}, 44:\penalty0 283--300, Oct. 2009{\natexlab{a}}.
+\newblock \emph{SIGPLAN Not.}, 44:\penalty0 283--300, Oct. 2009.
 %\newblock ISSN 0362-1340.
 %\newblock \doi{http://doi.acm.org/10.1145/1639949.1640110}.
 %\newblock URL \url{http://doi.acm.org/10.1145/1639949.1640110}.
-
-\bibitem[Furr et~al.(2009{\natexlab{b}})Furr, An, Foster, and Hicks]{druby}
-M.~Furr, J.-h.~D. An, J.~S. Foster, and M.~Hicks.
-\newblock Static type inference for ruby.
-\newblock In \emph{Proceedings of the 2009 ACM symposium on Applied Computing},
-  SAC '09, pages 1859--1866, New York, NY, USA, 2009{\natexlab{b}}. ACM.
-%\newblock ISBN 978-1-60558-166-8.
-%\newblock \doi{http://doi.acm.org/10.1145/1529282.1529700}.
-%\newblock URL \url{http://doi.acm.org/10.1145/1529282.1529700}.
 
 \bibitem[Gomez(1999)]{scilab}
 C.~Gomez, editor.
 \newblock \emph{Engineering and Scientific Computing With Scilab}.
 \newblock Birkh{\"a}user, 1999.
-
-\bibitem[Henglein(1992{\natexlab{a}})]{dyntype}
-F.~Henglein.
-\newblock Dynamic typing.
-\newblock In B.~Krieg-Brückner, editor, \emph{ESOP '92}, volume 582 of
-  \emph{Lecture Notes in Computer Science}, pages 233--253. Springer Berlin /
-  Heidelberg, 1992{\natexlab{a}}.
-%\newblock ISBN 978-3-540-55253-6.
-
-\bibitem[Henglein(1992{\natexlab{b}})]{taggingopt}
-F.~Henglein.
-\newblock Global tagging optimization by type inference.
-\newblock In \emph{Proceedings of the 1992 ACM conference on LISP and
-  functional programming}, LFP '92, pages 205--215, New York, NY, USA,
-  1992{\natexlab{b}}. ACM.
-%\newblock ISBN 0-89791-481-3.
-%\newblock \doi{http://doi.acm.org/10.1145/141471.141542}.
-%\newblock URL \url{http://doi.acm.org/10.1145/141471.141542}.
 
 \bibitem[Ihaka and Gentleman(1996)]{Rlang}
 R.~Ihaka and R.~Gentleman.
@@ -2069,19 +1867,6 @@ M.~A. Kaplan and J.~D. Ullman.
 %\newblock \doi{http://doi.acm.org/10.1145/322169.322181}.
 %\newblock URL \url{http://doi.acm.org/10.1145/322169.322181}.
 
-\bibitem[Kennedy et~al.(2001)Kennedy, Broom, Cooper, Dongarra, Fowler, Gannon,
-  Johnsson, Mellor-Crummey, and Torczon]{telescoping}
-K.~Kennedy, B.~Broom, K.~Cooper, J.~Dongarra, R.~Fowler, D.~Gannon,
-  L.~Johnsson, J.~Mellor-Crummey, and L.~Torczon.
-\newblock Telescoping languages: A strategy for automatic generation of
-  scientific problem-solving systems from annotated libraries.
-\newblock \emph{Journal of Parallel and Distributed Computing}, 61\penalty0
-  (12):\penalty0 1803 -- 1826, 2001.
-%\newblock ISSN 0743-7315.
-%\newblock \doi{10.1006/jpdc.2001.1724}.
-%\newblock URL
-%  \url{http://www.sciencedirect.com/science/article/pii/S0743731501917241}.
-
 \bibitem[Lattner and Adve(2004)]{LLVM}
 C.~Lattner and V.~Adve.
 \newblock {LLVM: A Compilation Framework for Lifelong Program Analysis \&
@@ -2106,16 +1891,6 @@ K.-L. Ma and R.~R. Kessler.
 %\newblock ISSN 1097-024X.
 %\newblock \doi{10.1002/spe.4380200606}.
 %\newblock URL \url{http://dx.doi.org/10.1002/spe.4380200606}.
-
-\bibitem[Mehnert(2010)]{dylantypes}
-H.~Mehnert.
-\newblock Extending dylan's type system for better type inference and error
-  detection.
-\newblock In \emph{Proceedings of the 2010 international conference on Lisp},
-  ILC '10, pages 1--10, New York, NY, USA, 2010. ACM.
-%\newblock ISBN 978-1-4503-0470-2.
-%\newblock \doi{http://doi.acm.org/10.1145/1869643.1869645}.
-%\newblock URL \url{http://doi.acm.org/10.1145/1869643.1869645}.
 
 \bibitem[Mohnen(2002)]{graphfree}
 M.~Mohnen.
@@ -2150,29 +1925,12 @@ A.~Shalit.
   1996.
 %\newblock ISBN 0-201-44211-6.
 
-\bibitem[Siek and Taha(2007)]{gradualobjects}
-J.~Siek and W.~Taha.
-\newblock Gradual typing for objects.
-\newblock In E.~Ernst, editor, \emph{ECOOP 2007 – Object-Oriented
-  Programming}, volume 4609 of \emph{Lecture Notes in Computer Science}, pages
-  2--27. Springer Berlin / Heidelberg, 2007.
-%\newblock ISBN 978-3-540-73588-5.
-
-\bibitem[Tobin-Hochstadt and Felleisen(2008)]{typedscheme}
-S.~Tobin-Hochstadt and M.~Felleisen.
-\newblock The design and implementation of typed scheme.
-\newblock In \emph{Proceedings of the 35th annual ACM SIGPLAN-SIGACT symposium
-  on Principles of programming languages}, POPL '08, pages 395--406, New York,
-  NY, USA, 2008. ACM.
-%\newblock ISBN 978-1-59593-689-9.
-%\newblock \doi{http://doi.acm.org/10.1145/1328438.1328486}.
-%\newblock URL \url{http://doi.acm.org/10.1145/1328438.1328486}.
-
 \bibitem[van~der Walt et~al.(2011)van~der Walt, Colbert, and Varoquaux]{numpy}
 S.~van~der Walt, S.~C. Colbert, and G.~Varoquaux.
 \newblock The numpy array: a structure for efficient numerical computation.
 \newblock \emph{CoRR}, abs/1102.1523, 2011.
 
 \end{thebibliography}
+
 
 \end{document}
