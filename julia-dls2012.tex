@@ -67,23 +67,22 @@ often found lacking in performance.
 
 The result is a two-tiered software world, where C and Fortran are
 used for key libraries and production code, while high-level languages
-are used for interaction and scripting workflow.  A new
+are used for prototyping, interaction, and scripting workflow.  A new
 approach to dynamic language design can change this situation,
 providing productivity and performance in one
-package. We should embrace the emerging preference for ``scripting''
-style languages, and ask how these systems can better provide for the
+package. We should embrace the emerging preference for dynamic
+languages, and ask how these systems can better provide for the
 future of technical computing.
 
 A technical computing language balances the preferences of the end
 user, the library developer, and the language designer.
 The ``two-tier'' archiecture, though successful for some applications,
-takes its toll on each category of programmer.
-Users of such
-languages overwhelmingly prefer features such as interactivity,
-scripting, and type-free programming.
+takes its toll on each category of programmer. Users
+overwhelmingly prefer features such as interactivity and
+type-free programming.
 To obtain performance, users face a few unappealing options.
-One option is to employ aggressive vectorization, often at the cost of making
-code difficult to read, and often increasing memory use.
+One option is to employ aggressive ``vectorization'', often at the cost
+of making code difficult to read, and often increasing memory use.
 Another option is to rewrite code in C or Fortran, which many users
 are unwilling to learn. Programming in two
 languages can also be more complex than using either language by
@@ -101,17 +100,21 @@ generate code for multiple input types. Distribution of
 such libraries is difficult, since they have to be compiled for
 various combinations of operating systems and architectures.
 
-From a language designer's point of view, programming in multiple
+From a language designer and implementer's point of view, programming in
+multiple
 languages makes it difficult to perform whole-program optimizations. It
 is also difficult to perform domain-specific optimizations of C code.
+We suspected that a new design could supply a compiler with more of the
+information it needs without significantly burdening the user, forming
+the initial motivation for Julia.
 % ...
 
-Fortunately, there has been significant progress in improving the
+There has been significant progress in improving the
 performance of dynamic languages. Projects like the Python compiler
 framework PyPy \cite{pypyjit} have been fairly successful. Similar
 efforts exist for languages from LISP onward. The common feature of
 all such projects is that they seek to add performance to an existing
-language. This is obviously useful, since a large body of existing code
+language. This is obviously useful, since existing code
 can benefit. But while
 promising, these efforts have yet to significantly decrease the need for
 the ``two-tier'' approach in practice.
@@ -133,7 +136,7 @@ languages are developed, knowledge of key library functions often must
 be encoded into the compiler. Often, optimizers focus on a few particular
 types (e.g. {\it double precision}). It is cumbersome to write code that
 uses floating point numbers with different precisions, or other
-numeric types. Programs that use
+types. Programs that use
 user-defined types might run slowly, so that users tend to
 avoid defining their own types altogether.
 
@@ -155,28 +158,43 @@ built in to the compiler. New users are able to read the standard
 library code, and modify it, imitate it, or extend it for their own
 purposes.
 
-%\section{The Essence of Julia}
+% TODO: summary of our results, e.g. community stuff, talk about this
+% being a practical, general language
+
+
+\section{Contributions}
 
 Julia's primary means of abstraction is dynamic multiple dispatch.
 Much of a language consists of mechanisms for selecting
 code to run in different situations --- from method selection to
 instruction selection. We use only dynamic multiple dispatch for this
 purpose, which is possible through sufficiently expressive
-dispatch rules. To add usability to this flexibility,
-types can generally be ignored when not used to specify dispatch behavior.
+dispatch rules.
+
+To obtain the desired expressiveness and compile-time type information,
+we must employ fairly sophisticated types. To balance this
+requirement with usability, we have attempted to design the
+``easy version'' of key features, namely parametric types and methods.
+We provide these features without a concept of static application
+(e.g. template instantiation), without distinct type and expression
+contexts, and leaving parameters optional whenever possible.
+
+%To add usability to this flexibility,
+%types can generally be ignored when not used to specify dispatch behavior.
 
 % we should say that we've tried to design the ``easy version'' of some
 % fancy type system features
 
-Types may optionally be used to make declarations, which are considered by
-the compiler and checked at run time when necessary. However, we do not
+Types may be used to make declarations, but we do not
 require declarations for performance. To achieve this, Julia's compiler
 automatically specializes methods for types encountered at run time
 (or at compile time, to the extent types are known then). Effectively,
 every method is a template (in the C++ sense) by default, with
-parameterization and instantiation directed by the compiler. We feel this
-design is in line with a general trend towards automation in compiler
-and language design.
+parameterization and instantiation directed by the compiler.
+We introduce some type-based heuristics for controlling method specialization.
+%We feel this
+%design is in line with a general trend towards automation in compiler
+%and language design.
 
 %designing for type inference gives us two things
 %- can design library with conscious tradeoffs
@@ -331,6 +349,8 @@ their parameters (i.e. two versions of the same type with different parameters
 are simply different, and have no subtype relationship). Type
 constructors are applied using curly braces, as in {\tt Array\{Float64,1\}}
 (the {\tt Array} type is parameterized by element type and rank).
+Semantically, a type constructor application is a function call expression
+evaluated at run time.
 
 Type parameters may have bounds \cite{boundedquant}, also declared using
 the {\tt <:} operator, as in {\tt Rational\{T<:Integer\}}.
