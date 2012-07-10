@@ -130,11 +130,11 @@ of the key differences between languages used by different disciplines
 instead either part of the language core, or implemented in C where
 they are more difficult to modify or extend. When optimizers for these
 languages are developed, knowledge of key library functions often must
-be encoded into the compiler. Often, languages focus on one particular
-type (eg. {\it double precision}. It is cumbersome to write codes that
-use floating point numbers with different precisions, or other
-built-in types such as integers and strings. Codes that use
-user-defined types end up being extremely slow, that users tend to
+be encoded into the compiler. Often, optimizers focus on a few particular
+types (e.g. {\it double precision}). It is cumbersome to write code that
+uses floating point numbers with different precisions, or other
+numeric types. Programs that use
+user-defined types might run slowly, so that users tend to
 avoid defining their own types altogether.
 
 %Even Common LISP, for which there are several
@@ -326,6 +326,7 @@ covariant in their element types. A tuple is used to represent the type of a
 method's arguments.
 \item union types, abstract types constructed from other types via set union
 \end{enumerate}
+% TODO define covariant
 
 Abstract types, composite types, and bits types may have parameters, which
 makes it possible to express variants of a given type (for example, array types
@@ -1132,7 +1133,7 @@ algorithm is to check whether one argument is a subtype of the other, and
 return the smaller type. It is also possible to determine quickly, in
 many cases, that two types are disjoint, and return $\bot$. With these
 two enhancements we start to obtain some useful type information. However,
-we need to do much better to take full advantage of the framework set up
+we need to do better to take full advantage of the framework set up
 so far.
 
 Our algorithm has two phases. First, the structures of the two input types
