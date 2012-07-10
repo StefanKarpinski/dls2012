@@ -70,82 +70,49 @@ lack sufficient performance. As a result, the most challenging areas of
 technical computing have benefited the least from the increased
 abstraction and productivity offered by higher level languages.
 
-The performance gap between high-level, dynamic languages and low-level,
-static languages leaves scientific computing divided: C and Fortran are
-used for crucial libraries and production code, while high-level languages
-are used for prototyping, interaction, and scripting workflow. A fresh
-approach to dynamic language design can change this situation, providing
-productivity and performance in one system. The Julia language aims to
-extend the greater abstraction, leverage, convenience and productivity of
-a very high-level, dynamic environment to areas of numerical computing
-where performance demands have traditionally required the use of
-low-level, static languages.
+The resulting architecture is two-tiered: the programmer expresses
+high-level logic in a dynamic language while the heavy lifting is done in
+C and Fortran. The aforementioned dynamic technical computing environments
+are all instances of this design. While this approach is pragmatic for
+many applications, there are significant drawbacks. It would be preferable
+to also write compute-intensive code in a more productive language. This
+is especially true when developing parallel algorithms, where code
+complexity can increase dramatically. Programming in two languages can be
+more complex than using either language by itself due to the need for
+mediation between different type domains and incompatible memory
+management schemes. These interfacing issues may also add overhead when
+calling between layers. When such a system is used for mathematical
+programming there is pressure to write ``vectorized'' code, which is not
+natural for every problem. Lastly, from a compiler's point of view, these
+designs make it difficult to perform whole-program optimization.
 
-A technical computing language balances the preferences of the end
-user, the library developer, and the language designer.
-The ``two-tier'' archiecture, though successful for some applications,
-takes its toll on each category of programmer. Users
-overwhelmingly prefer features such as interactivity and
-type-free programming.
-To obtain performance, users face a few unappealing options.
-One option is to employ aggressive ``vectorization'', often at the cost
-of making code difficult to read, and often increasing memory use.
-Another option is to rewrite code in C or Fortran, which many users
-are unwilling to learn. Programming in two
-languages can also be more complex than using either language by
-itself, due to interfacing issues such as converting between type
-domains and handling memory reclamation.  These interfacing issues may
-also add overhead when calling between layers.
-
-Library developers are happy to do whatever it takes to get
-performance --- type annotations, parallelization, or using multiple
-languages.
-However, rewriting computational kernels in a different
-language can put them at a disadvantage, since the resulting
-code may not be generic, or requires scripts to
-generate code for multiple input types. Distribution of
-such libraries is difficult, since they have to be compiled for
-various combinations of operating systems and architectures.
-
-From a language designer and implementer's point of view, programming in
-multiple
-languages makes it difficult to perform whole-program optimizations. It
-is also difficult to perform domain-specific optimizations of C code.
-We suspected that a new design could supply a compiler with more of the
-information it needs without significantly burdening the user, forming
-the initial motivation for Julia.
-% ...
-
-There has been significant progress in improving the
-performance of dynamic languages. Projects like the Python compiler
-framework PyPy \cite{pypyjit} have been fairly successful. Similar
-efforts exist for languages from LISP onward. The common feature of
-all such projects is that they seek to add performance to an existing
-language. This is obviously useful, since existing code
-can benefit. But while
-promising, these efforts have yet to significantly decrease the need for
-the ``two-tier'' approach in practice.
-Julia is designed for
-performance from the beginning, and we feel this seemingly-subtle
-difference turns out to be crucial.
+There has been significant progress in improving the performance of
+dynamic languages. Projects like the Python compiler framework PyPy
+\cite{pypyjit} have been fairly successful. Similar efforts exist for
+languages from LISP onward. The common feature of all such projects is
+that they seek to add performance to an existing language. This is
+obviously useful, since existing code can benefit. But while promising,
+these efforts have yet to significantly decrease the need for the
+``two-tier'' approach in practice. Julia is designed for performance from
+the beginning, and we feel this seemingly-subtle difference turns out to
+be crucial.
 
 %In our design, the compiler machinery that provides performance
 %is also available for extra expressivity in programs.
 
 {\it Built-in} performance means that the compiler's type machinery is
-also available within the language, adding expressiveness. This, in
-turn, allows more functionality to be implemented in libraries. Many
-of the key differences between languages used by different disciplines
-(e.g. R for statistics) could be expressed in libraries, but are
-instead either part of the language core, or implemented in C where
-they are more difficult to modify or extend. When optimizers for these
-languages are developed, knowledge of key library functions often must
-be encoded into the compiler. Often, optimizers focus on a few particular
-types (e.g. {\it double precision}). It is cumbersome to write code that
-uses floating point numbers with different precisions, or other
-types. Programs that use
-user-defined types might run slowly, so that users tend to
-avoid defining their own types altogether.
+also available within the language, adding expressiveness. This, in turn,
+allows more functionality to be implemented in libraries. Many of the key
+differences between languages used by different disciplines (e.g. R for
+statistics) could be expressed in libraries, but are instead either part
+of the language core, or implemented in C where they are more difficult to
+modify or extend. When optimizers for these languages are developed,
+knowledge of key library functions often must be encoded into the
+compiler. Often, optimizers focus on a few particular types (e.g. {\it
+double precision}). It is cumbersome to write code that uses floating
+point numbers with different precisions, or other types. Programs that use
+user-defined types might run slowly, so that users tend to avoid defining
+their own types altogether.
 
 %Even Common LISP, for which there are several
 %highly-optimizing compilers, specifies arithmetic in the language, and
@@ -153,21 +120,19 @@ avoid defining their own types altogether.
 %users require specialized types such as fixed-point numbers or intervals,
 %or support for ``missing data'' values as in R.
 
-Julia has the potential to solve this problem by providing
-infrastructure that can be shared across domains, without sacrificing
-the ease and immediacy of current popular systems.  We take advantage
-of, and validate, this infrastructure by writing Julia's standard
-library in the language itself, which (1) makes the code more generic
-and increases our productivity, (2) allows inlining library code into
-user code and vice-versa, and (3) enables direct type analysis of the
-library instead of requiring knowledge of library functions to be
-built in to the compiler. New users are able to read the standard
-library code, and modify it, imitate it, or extend it for their own
-purposes.
+Julia has the potential to solve this problem by providing infrastructure
+that can be shared across domains, without sacrificing the ease and
+immediacy of current popular systems. We take advantage of, and validate,
+this infrastructure by writing Julia's standard library in the language
+itself, which (1) makes the code more generic and increases our
+productivity, (2) allows inlining library code into user code and
+vice-versa, and (3) enables direct type analysis of the library instead of
+requiring knowledge of library functions to be built in to the compiler.
+New users are able to read the standard library code, and modify it,
+imitate it, or extend it for their own purposes.
 
 % TODO: summary of our results, e.g. community stuff, talk about this
 % being a practical, general language
-
 
 \section{Contributions}
 
