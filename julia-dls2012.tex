@@ -188,16 +188,6 @@ purposes.
 %% prefer environments that cater to its syntactic needs, and are able to
 %% prioritize issues of numerical accuracy and performance.
 
-%% my parallelism principles:
-%% 1. People won't use a language *just* to get parallelism. They will
-%% live with their favorite language's parallel extensions (ipython,
-%% cilk, PCT, etc.)
-%% 2. Making parallelism implicit in evaluation semantics is not the way
-%% to get effective parallelism. I think I heard Arvind say they tried it
-%% with parallel Haskell for 10 years, and it didn't work.
-%% 3. If a language isn't as easy as \Matlab or R, people will keep using
-%% \Matlab or R.
-
 %\section{The Essence of Julia}
 
 Julia's primary means of abstraction is dynamic multiple dispatch.
@@ -288,14 +278,6 @@ are those of a standard imperative language: statements are executed in order,
 with function arguments evaluated eagerly. All values are conceptually
 references, and are passed by reference as in LISP.
 
-%% Julia's core evaluation semantics are particularly bland, because all of the
-%% interesting work has been moved to the generic function system. Every
-%% function definition is actually a definition of a method for some generic
-%% function for some combination of argument types. The ``feel'' of the language
-%% derives mostly from the fact that every function call is dynamically
-%% dispatched to the most specific matching method definition, based on the
-%% types of all arguments.
-
 
 \subsection{Types}
 
@@ -360,12 +342,6 @@ involved were first defined. For example, we could use
 there is no {\tt Index} type inherited by both constituents. Lastly,
 union types can be used to declare methods applicable to multiple types.
 
-%% The key to the utility of Julia's type system is its implementation of two
-%% important functions: the subtype predicate, which determines whether one type
-%% is a subset of another, and type intersection, which computes a type that is a
-%% subtype of two given types. These functions form the basis of method dispatch
-%% logic and type inference.
-
 \subsection{Notational Conveniences}
 
 An important goal is for users to be able to write Julia programs with
@@ -378,55 +354,8 @@ to a Float64 Array of any rank, and {\tt Array\{Float64,2\}} refers to a
 This design also makes it easy to add parameters to types later; existing
 code does not need to be modified.
 
-%%% NOTE: nominated for deletion by JWB
-%% \subsection{Standard Type Hierarchy}
-%% Here we present an excerpt from the standard library, showing how a few
-%% important types are defined. The fields of composite types are redacted for
-%% the sake of brevity. The {\tt <:} syntax indicates a declared subtype
-%% relation.
-
-%% \begin{verbatim}
-%% abstract Type{T}
-%% type AbstractKind  <: Type; end
-%% type BitsKind      <: Type; end
-%% type CompositeKind <: Type; end
-%% type UnionKind     <: Type; end
-
-%% abstract Number
-%% abstract Real     <: Number
-%% abstract Float    <: Real
-%% abstract Integer  <: Real
-%% abstract Signed   <: Integer
-%% abstract Unsigned <: Integer
-
-%% bitstype 32 Float32 <: Float
-%% bitstype 64 Float64 <: Float
-
-%% bitstype 8  Bool <: Integer
-%% bitstype 32 Char <: Integer
-
-%% bitstype 8  Int8   <: Signed
-%% bitstype 8  Uint8  <: Unsigned
-%% bitstype 16 Int16  <: Signed
-%% bitstype 16 Uint16 <: Unsigned
-%% bitstype 32 Int32  <: Signed
-%% bitstype 32 Uint32 <: Unsigned
-%% bitstype 64 Int64  <: Signed
-%% bitstype 64 Uint64 <: Unsigned
-
-%% abstract AbstractArray{T,N}
-%% type Array{T,N} <: AbstractArray{T,N}; end
-%% \end{verbatim}
-
-% pattern emerges where ``user code'' has no types, and the more types
-% written in code the more ``library-like'' it becomes (cite scala?)
-
 
 \subsection{Generic Functions}
-
-% TODO:
-% talk about how this is a sneaky way to collect type information. since
-% signatures specify dispatch behavior they are not redundant information.
 
 The vast majority of Julia functions (in both the library and user programs)
 are generic functions, meaning they contain multiple definitions or methods for
@@ -523,26 +452,6 @@ despite invariance. The other use is
 writing ``diagonal'' constraints as in the example above. Such diagonal
 constraints significantly complicate the type lattice operators.
 
-
-%%% NOTE: nominated for deletion by JWB
-%% \subsection{Type Definition}
-
-%% \begin{verbatim}
-%% # abstract type
-%% abstract Complex{T<:Real} <: Number
-
-%% # composite type
-%% type ComplexPair{T<:Real} <: Complex{T}
-%%     re::T
-%%     im::T
-%% end
-
-%% # bits type
-%% bitstype 128 Complex128 <: Complex{Float64}
-
-%% # type alias
-%% typealias TwoOf{T} (T,T)
-%% \end{verbatim}
 
 \subsection{Constructors}
 
@@ -661,25 +570,6 @@ Warning: New definition foo(Int,Number) is
 \end{verbatim}
 
 
-%%% NOTE: nominated for deletion by JWB
-%% \subsection{Intrinsic Functions}
-
-%% The run-time system contains a small number of primitive functions for tasks
-%% like determining the type of a value, accessing fields of composite types, and
-%% constructing values of each of the supported kinds of concrete types. There are
-%% also arithmetic intrinsics corresponding to machine-level operations like
-%% fixed-width integer addition, bit shifts, etc. These intrinsic functions are
-%% implemented only in the code generator and do not have callable entry points.
-%% They operate on bit strings, which are not first class values but can be
-%% converted to and from Julia bits types via boxing and unboxing operations.
-
-%% In our implementation, the core system also provides functions for constructing
-%% arrays and accessing array elements. Although this is not strictly necessary,
-%% we did not want to expose unsafe memory operations (e.g. load and store
-%% primitives) in the language. In an earlier implementation, the core system
-%% provided a bounds-checked {\tt Buffer} abstraction, but having both this type
-%% and the user-level {\tt Array} type proved inconvenient and confusing.
-
 \subsection{Iteration}
 
 A {\tt for} loop is translated to a while loop with method calls according
@@ -743,8 +633,6 @@ ambiguity, the programmer can request the second interpretation by
 prefixing an argument with an ampersand (a pun on C syntax for taking the
 address of a value), as in {\tt \&x}.
 
-
-
 \subsection{Parallelism}
 
 Parallel execution is provided by a message-based multi-processing
@@ -756,7 +644,6 @@ communication to be hidden inside libraries, rather than requiring the
 user to set up callbacks. Julia does not currently support
 native threads, which is a limitation, but has the advantage of avoiding
 the complexities of synchronized use of shared memory.
-
 
 \subsection{Design Limitations}
 
@@ -785,6 +672,7 @@ Lastly, at this time Julia uses a bit more memory than we would prefer.
 Our compiler data structures, type information, and generated native code
 take up more space than the compact bytecode representations used by many
 dynamic languages.
+
 
 \section{Implementation}
 
@@ -918,11 +806,6 @@ supertype of $t_{arg}$, no more definitions need to be considered.
 Second, the join operator employs \emph{widening} \cite{widening}:
 if a type becomes too large it may simply return {\tt Any}. In this case
 the recursive inference process may stop immediately.
-
-% \subsubsection{MFP Dataflow Algorithm}
-
-% \renewcommand{\algorithmicrequire}{\textbf{Input:}}
-% \renewcommand{\algorithmicensure}{\textbf{Output:}}
 
 \begin{algorithm}
 \caption{Infer function return type}
@@ -1189,53 +1072,8 @@ to form the final result.
  \ENDIF
  \RETURN $intersect(sub, typename(sub)\{E...\})$
 \ENDIF
-%\FORALL {$(S=U) \in E$}
-% \STATE {$V \leftarrow $ value of $S$ in $sub$}
-% \STATE {replace $U$ with $intersect(U,V)$}
-%\ENDFOR
-%\RETURN {instantiate $sub$ with $E$}
 \end{algorithmic}
 \end{algorithm}
-
-%%% NOTE: nominated for deletion by JWB
-%% \begin{algorithm}
-%% \caption{Solve type variable constraints}
-%% \label{alg5}
-%% \begin{algorithmic}
-%% \REQUIRE environment $X$ of pairs $T\leq S$ and $T=S$
-%% \ENSURE environment $Y$ of unique variable assignments $T=S$, or failure
-%% \STATE $Y \leftarrow \emptyset$
-%% \STATE replace $(T\leq S) \in X$ with $(T=S)$ when $S$ is concrete
-%% \FORALL {$(T=S) \in X$}
-%%  \IF {$(T=R) \in X$ \AND $S\neq R$}
-%%   \RETURN failure
-%%  \ENDIF
-%% \ENDFOR
-%% \FORALL {$(T\leq S) \in X$}
-%%  \IF {$(T=U) \in X$}
-%%   \IF {\NOT $find(X,U)\leq S$}
-%%    \RETURN failure
-%%   \ELSE
-%%    \STATE $X \leftarrow X - (T\leq S)$
-%%   \ENDIF
-%%  \ELSIF {$(T\leq U) \in X$ and $U$ not a variable}
-%%   \STATE replace $U$ with $U\sqcap^{*}S$
-%%   \STATE $X \leftarrow X - (T\leq S)$
-%%  \ENDIF
-%% \ENDFOR
-%% \FORALL {variables $T$}
-%%  \IF {$(T=U) \in X$}
-%%   \STATE $Y \leftarrow Y \cup \{T=U\}$
-%%  \ELSE
-%%   \STATE $S \leftarrow \sqcap^{*} find(X,U), \forall (T\leq U) \in X$
-%%   \IF {$S = \bot$}
-%%    \RETURN failure
-%%   \ENDIF
-%%   \STATE $Y \leftarrow Y \cup \{T=S\}$
-%%  \ENDIF
-%% \ENDFOR
-%% \end{algorithmic}
-%% \end{algorithm}
 
 When the argument types are not from the same family, we recur up the
 type hierarchy to see if any supertype of one of the arguments matches
@@ -1345,15 +1183,6 @@ used, in some cases LLVM has been able to delete the whole thing.
 
 
 \section{Example Use Cases}
-
-%By design, it is possible to write many programs in Julia that are
-%entirely unsurprising to users of current systems such as Python, R, and
-%\Matlab. Therefore, in this chapter we focus instead on
-%more novel uses enabled by Julia's types and dispatch mechanism.
-
-% these examples focus on unique features of julia. much julia code is
-% written without using this sort of functionality, and looks quite similar
-% to code in current systems.
 
 \subsection{Numeric Type Promotion}
 
@@ -1567,83 +1396,6 @@ in libraries without losing performance. Of course, ordinary Julia
 functions may also have complex type behavior, and it is up to the
 library designer to decide which functions should be staged.
 
-
-%%% NOTE: nominated for deletion by JWB
-%% \subsection{Generic Programming}
-
-%% Support for generic programming is one of Julia's strengths.
-%% Code in dynamic languages is often thought of as generic by default, due
-%% to the absence of type restrictions, but this has its limits. First, many
-%% systems, such as Common LISP, support optional type declarations to
-%% improve performance. However, when this feature is used code usually
-%% becomes monomorphic as a result. Second, some cases of generic
-%% programming require the ability to specify behaviors that \emph{vary}
-%% based on types, for example initializing a variable with the right kind
-%% of container, or with an appropriate value for different numeric types.
-
-%% Julia has neither of these problems. The first is solved both by
-%% automatic specialization (which usually eliminates the need for
-%% performance-seeking declarations), and static parameters, which allow
-%% declarations containing type variables. The second is solved by the
-%% ability to define type traits. Multiple dispatch is also helpful, as it
-%% provides many ways to extend functions in the future.
-
-%% As an example, here is how {\tt max} can be written for any array:
-
-%% \begin{verbatim}
-%% function max{T<:Real}(A::AbstractArray{T})
-%%     v = typemin(T)
-%%     for x in A
-%%         if x > v
-%%             v = x
-%%         end
-%%     end
-%%     return v
-%% end
-%% \end{verbatim}
-
-%% At the same time, we could provide an alternate implementation that makes
-%% even fewer assumptions:
-
-%% \begin{verbatim}
-%% function max(A)
-%%     v = typemin(eltype(A))
-%%     ...
-%% end
-%% \end{verbatim}
-
-%% This allows any container to expose its element type by implementing
-%% {\tt eltype}. Here we do not have to know how the element type is
-%% determined. In fact, this version would work for arrays equally well
-%% as the first implementation, but we skip the opportunity to specify
-%% that it is only defined for arrays with {\tt Real} elements.
-%% We might also choose to call {\tt typemin} only if the container is
-%% empty, and otherwise initialize {\tt v} with the first element. Then
-%% {\tt max} would work on containers that do not implement {\tt eltype},
-%% as long as they are never empty.
-
-%% Flexible ad-hoc polymorphism plays a significant role in Julia's overall
-%% performance. In scientific computing especially, important special cases
-%% exist among the myriad datatypes that might appear in a program. Our
-%% dispatch model permits writing definitions for more specialized cases
-%% than most object-oriented languages.
-
-%% For example, we have {\tt Array}, the type of dense arrays, and
-%% {\tt SubArray}, an abstract array that references a contiguous subsection of
-%% another array. The BLAS and LAPACK libraries allow the caller to specify
-%% dimension strides, and we would like to call them for any arrays they
-%% can handle. To do this, we can define the following types:
-
-%% \begin{verbatim}
-%% typealias Matrix{T}  Array{T,2}
-%% typealias StridedMatrix{T,A<:Array}
-%%           Union(Matrix{T}, SubArray{T,2,A})
-%% \end{verbatim}
-
-%% Then we can write definitions such as
-%% {\tt *(StridedMatrix\{T\},} {\tt StridedMatrix\{T\})} for appropriate element types
-%% {\tt T}. This replaces the custom dispatch schemes often implemented in
-%% array programming systems.
 
 \section{Evaluation}
 
@@ -1868,9 +1620,6 @@ examples in the
 Lisp world (\cite{TICL}, \cite{pticl}, \cite{nimble}, \cite{taggingopt}),
 and in the world of object-oriented languages such as Self \cite{selflang}
 and JavaScript \cite{typeinfjavascript}.
-
-% TODO: say something here about how julia does type inference and hint at
-% what's a bit different about it.
 
 Dynamic type inference schemes obey a correctness property that
 inferred types must subsume all possible run-time
