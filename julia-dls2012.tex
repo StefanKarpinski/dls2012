@@ -95,46 +95,64 @@ compiler framework PyPy \cite{pypyjit} have been fairly successful.
 Similar efforts exist for languages from LISP onward. The common feature
 of all such projects is that they seek to add performance to an existing
 language. This is obviously useful, since existing code can benefit. While
-promising, these efforts have yet to significantly decrease the need for
-the two-tier approach in practice.
+promising, these efforts have yet to eliminate the need for the two-tier
+approach in practice. Design decisions made under the assumption that
+language implementations would be interpreted rather than compiled tend to
+sabotage the ability to generate efficient code. As Henry Baker observed
+of Common LISP, ``...the polymorphic type complexity of the Common LISP
+library functions is mostly gratuitous, and both the efficiency of
+compiled code and the efficiency of the programmer could be increased by
+rationalizing this complexity.''~\cite{nimble} Others have echoed these
+sentiments~\cite{lispcrit}.
 
-Julia is designed for performance from the beginning, and we feel this
-seemingly-subtle difference turns out to be crucial.
+Julia is designed from the ground up to take advantage of modern
+techniques for executing dynamic languages efficiently. As a result, Julia
+has the performance of a statically compiled language while providing
+interactive dynamic behavior and productivity like Python, LISP or Ruby.
+The key ingredients of performance are:
+\begin{itemize}
+\item JIT compilation using the LLVM compiler framework~\cite{LLVM};
+\item Rich type information, provided naturally by multiple dispatch;
+\item Aggressive code specialization against run-time types.
+\end{itemize}
+Although a sophisticated type system is made available to the programmer,
+it remains unobtrusive in the sense that one is never required to specify
+types. Type information flows naturally from having actual values (and
+hence types) at the time of code generation, and from the language's core
+paradigm: by expressing the behavior of functions using multiple dispatch,
+the programmer unwittingly provides the compiler with extensive type
+information.
 
-%In our design, the compiler machinery that provides performance
-%is also available for extra expressivity in programs.
-
-Built-in performance means that the compiler's type machinery is
-also available within the language, adding expressiveness. This, in turn,
-allows more functionality to be implemented in libraries. Many of the key
-differences between languages used by different disciplines (e.g. R for
-statistics) could be expressed in libraries, but are instead either part
-of the language core, or implemented in C where they are more difficult to
-modify or extend. When optimizers for these languages are developed,
-knowledge of key library functions often must be encoded into the
-compiler. Often, optimizers focus on a few particular types (e.g. {\it
-double precision}). It is cumbersome to write code using different numeric
-types, and programs that use user-defined types might run slowly.
-
-%Even Common LISP, for which there are several
-%highly-optimizing compilers, specifies arithmetic in the language, and
-%yet users do not all agree on how arithmetic should behave. Some
-%users require specialized types such as fixed-point numbers or intervals,
-%or support for ``missing data'' values as in R.
-
-Julia has the potential to solve this problem by providing infrastructure
-that can be shared across domains, without sacrificing the ease and
-immediacy of current popular systems. We take advantage of, and validate,
-this infrastructure by writing Julia's standard library in the language
-itself, which (1) makes the code more generic and increases our
-productivity, (2) allows inlining library code into user code and
-vice-versa, and (3) enables direct type analysis of the library instead of
-requiring knowledge of library functions to be built in to the compiler.
-New users are able to read the standard library code, and modify it,
-imitate it, or extend it for their own purposes.
-
-% TODO: summary of our results, e.g. community stuff, talk about this
-% being a practical, general language
+% adding expressiveness. This, in turn, allows more
+% functionality to be implemented in libraries. Many of the key differences
+% between languages used by different disciplines (e.g. R for statistics)
+% could be expressed in libraries, but are instead either part of the
+% language core, or implemented in C where they are more difficult to modify
+% or extend. When optimizers for these languages are developed, knowledge of
+% key library functions often must be encoded into the compiler. Often,
+% optimizers focus on a few particular types (e.g. {\it double precision}).
+% It is cumbersome to write code using different numeric types, and programs
+% that use user-defined types might run slowly.
+% 
+% %Even Common LISP, for which there are several
+% %highly-optimizing compilers, specifies arithmetic in the language, and
+% %yet users do not all agree on how arithmetic should behave. Some
+% %users require specialized types such as fixed-point numbers or intervals,
+% %or support for ``missing data'' values as in R.
+% 
+% Julia has the potential to solve this problem by providing infrastructure
+% that can be shared across domains, without sacrificing the ease and
+% immediacy of current popular systems. We take advantage of, and validate,
+% this infrastructure by writing Julia's standard library in the language
+% itself, which (1) makes the code more generic and increases our
+% productivity, (2) allows inlining library code into user code and
+% vice-versa, and (3) enables direct type analysis of the library instead of
+% requiring knowledge of library functions to be built in to the compiler.
+% New users are able to read the standard library code, and modify it,
+% imitate it, or extend it for their own purposes.
+% 
+% % TODO: summary of our results, e.g. community stuff, talk about this
+% % being a practical, general language
 
 
 
