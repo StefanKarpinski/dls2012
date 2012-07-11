@@ -64,7 +64,7 @@ in applied math, engineering, and the sciences. High-level environments
 such as \Matlab\!, Octave~\cite{Octave}, R~\cite{Rlang},
 SciPy~\cite{numpy}, and SciLab~\cite{scilab} provide greatly increased
 convenience and productivity. However, C and Fortran remain the gold
-standard languages for computationally intensive problems because
+standard languages for computationally-intensive problems because
 high-level dynamic languages still lack sufficient performance. As a
 result, the most challenging areas of technical computing have benefited
 the least from the increased abstraction and productivity offered by
@@ -89,21 +89,21 @@ Two-tiered systems also present a social barrier, preventing most users
 from understanding or contributing to their internals.
 
 An alternative to the two-tier compromise is to enhance the performance of
-existing dynamic languages to match C and Fortran. There has been
-significant progress made along these lines. Projects like the Python
+existing dynamic languages. There has been
+significant progress along these lines. Projects like the Python
 compiler framework PyPy \cite{pypyjit} have been fairly successful.
 Similar efforts exist for languages from LISP onward. The common feature
 of all such projects is that they seek to add performance to an existing
 language. This is obviously useful, since existing code can benefit. While
 promising, these efforts have yet to eliminate the need for the two-tier
 approach in practice. Design decisions made under the assumption that
-language implementations would be interpreted rather than compiled tend to
+a language would be implemented as an interpreter tend to
 sabotage the ability to generate efficient code. As Henry Baker observed
 of Common LISP, ``...the polymorphic type complexity of the Common LISP
 library functions is mostly gratuitous, and both the efficiency of
 compiled code and the efficiency of the programmer could be increased by
 rationalizing this complexity.''~\cite{nimble} Others have echoed these
-sentiments~\cite{lispcrit}.
+sentiments~\cite{lispcrit}~\cite{evaluatingR}.
 
 Julia is designed from the ground up to take advantage of modern
 techniques for executing dynamic languages efficiently. As a result, Julia
@@ -111,9 +111,9 @@ has the performance of a statically compiled language while providing
 interactive dynamic behavior and productivity like Python, LISP or Ruby.
 The key ingredients of performance are:
 \begin{itemize}
-\item JIT compilation using the LLVM compiler framework~\cite{LLVM};
 \item Rich type information, provided naturally by multiple dispatch;
-\item Aggressive code specialization against run-time types.
+\item Aggressive code specialization against run-time types;
+\item JIT compilation using the LLVM compiler framework~\cite{LLVM}.
 \end{itemize}
 Although a sophisticated type system is made available to the programmer,
 it remains unobtrusive in the sense that one is never required to specify
@@ -122,6 +122,18 @@ hence types) at the time of code generation, and from the language's core
 paradigm: by expressing the behavior of functions using multiple dispatch,
 the programmer unwittingly provides the compiler with extensive type
 information.
+
+We validate our design by implementing Julia's standard library---
+which encompasses most of the core functionality of standard technical
+computing environments---in the languge itself. As a result, our library
+code is more generic and compact, and it is possible to inline library code
+into user code and vice-versa.
+New users are able to read the standard library code, and modify it,
+imitate it, or extend it for their own purposes.
+Julia was publicly announced in February 2012. Our goals and work so
+far seemed to strike a chord, as we have seen a significant community
+start to grow in the short time since then.
+
 
 % adding expressiveness. This, in turn, allows more
 % functionality to be implemented in libraries. Many of the key differences
@@ -150,11 +162,6 @@ information.
 % requiring knowledge of library functions to be built in to the compiler.
 % New users are able to read the standard library code, and modify it,
 % imitate it, or extend it for their own purposes.
-% 
-% % TODO: summary of our results, e.g. community stuff, talk about this
-% % being a practical, general language
-
-
 
 %designing for type inference gives us two things
 %- can design library with conscious tradeoffs
@@ -225,11 +232,7 @@ include, but that most uses of these features are highly constrained...''
 \cite{profileguided}. In this sense, the designs of existing dynamic languages
 do not present a good trade-off. Much code is statically-typeable and could be
 executed more efficiently, but the language designs and implementations do not
-anticipate this fact. As Henry Baker observes of Common LISP, ``...the
-polymorphic type complexity of the Common LISP library functions is mostly
-gratuitous, and both the efficiency of compiled code and the efficiency of the
-programmer could be increased by rationalizing this complexity.''\cite{nimble}
-Others have echoed these sentiments \cite{lispcrit}.
+anticipate this fact.
 
 We hypothesize that the following forms of ``dynamism'' are the most useful:
 
@@ -1650,10 +1653,6 @@ learn.
 
 
 \section{Community}
-
-Julia was publicly announced in February 2012. Our goals and work so
-far seemed to strike a chord, as we have seen a significant community
-start to grow in the short time since then.
 
 Julia is an open source project, with all code hosted on
 {\tt github} \cite{github}.
