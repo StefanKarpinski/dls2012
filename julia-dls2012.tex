@@ -57,14 +57,14 @@ performance computing
 
 \section{Introduction}
 
-Convenience is winning. Despite many advances in compiler technology and
+Convenience is winning. Despite advances in compiler technology and
 execution frameworks for high-performance computing, programmers continue
 to prefer high-level dynamic languages for algorithm development and data
 analysis in applied math, engineering, and the sciences. High-level
-dynamic environments such as \Matlab, R \cite{Rlang}, SciPy \cite{numpy},
+environments such as \Matlab, R \cite{Rlang}, SciPy \cite{numpy},
 Octave \cite{Octave}, and SciLab \cite{scilab} provide greatly increased
-convenience and productivity. Despite these advantages, C and Fortran
-remain the gold standard languages for the most computationally intensive
+convenience and productivity. But at the same time, C and Fortran
+remain the gold standard languages for computationally intensive
 problems because high-level dynamic languages still lack sufficient
 performance. As a result, the most challenging areas of technical
 computing have benefited the least from the increased abstraction and
@@ -73,22 +73,21 @@ productivity offered by higher level languages.
 Two-tiered architectures have emerged as the standard compromise between
 convenience and performance: programmers express high-level logic in a
 dynamic language while the heavy lifting is done in C and Fortran. The
-aforementioned dynamic technical computing environments are all instances
-of this design. While this approach is pragmatic for many applications,
+aforementioned dynamic technical computing environments are all
+themselves instances
+of this design. While this approach is effective for some applications,
 there are drawbacks. It would be preferable to write compute-intensive
 code in a more productive language as well. This is particularly true when
 developing parallel algorithms, where code complexity can increase
 dramatically. Instead, there is pressure to write ``vectorized'' code,
-which is unnatural for many problems and tends to generate large temporary
-objects which could be avoided with simple scalar loops. Programming in
+which is unnatural for many problems and might generate large temporary
+objects which could be avoided with explicit loops. Programming in
 two languages is more complex than using either language by itself due to
 the need for mediation between different type domains and
-memory management schemes. Interfacing between layers may add significant
-overhead and makes whole-program optimization extremely difficult.
-Two-tiered systems also present a massive social barrier preventing the
-vast majority of users from understanding or contributing to their
-internals, which are written in a different language and hidden behind a
-complex API.
+memory management schemes. Interfacing between layers may add
+overhead and makes whole-program optimization difficult.
+Two-tiered systems also present a social barrier, preventing
+most users from understanding or contributing to their internals.
 
 There has been significant progress in improving the performance of
 dynamic languages. Projects like the Python compiler framework PyPy
@@ -113,10 +112,8 @@ of the language core, or implemented in C where they are more difficult to
 modify or extend. When optimizers for these languages are developed,
 knowledge of key library functions often must be encoded into the
 compiler. Often, optimizers focus on a few particular types (e.g. {\it
-double precision}). It is cumbersome to write code that uses floating
-point numbers with different precisions, or other types. Programs that use
-user-defined types might run slowly, so that users tend to avoid defining
-their own types altogether.
+double precision}). It is cumbersome to write code using different numeric
+types, and programs that use user-defined types might run slowly.
 
 %Even Common LISP, for which there are several
 %highly-optimizing compilers, specifies arithmetic in the language, and
@@ -161,9 +158,6 @@ types are not exposed in the language as they are in Julia).
 
 %To add usability to this flexibility,
 %types can generally be ignored when not used to specify dispatch behavior.
-
-% we should say that we've tried to design the ``easy version'' of some
-% fancy type system features
 
 Types may be used to make declarations, but we do not
 require declarations for performance. To achieve this, Julia's compiler
@@ -235,7 +229,7 @@ using the following restrictions:
 \item Types themselves are immutable.
 \item The type of a value cannot change over its lifetime.
 \item Local variable environments are not reified.
-\item Program code is immutable, but new code may be generated and executed at any time.
+\item Program code is immutable (but new code may be generated and executed at any time).
 \item Not all bindings are mutable ({\tt const} identifiers are allowed).
 \end{itemize}
 
