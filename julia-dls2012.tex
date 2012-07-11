@@ -58,17 +58,17 @@ performance computing, multiple dispatch, type inference
 \section{Introduction}
 
 Convenience is winning. Despite advances in compiler technology and
-execution frameworks for high-performance computing, programmers continue
-to prefer high-level dynamic languages for algorithm development and data
-analysis in applied math, engineering, and the sciences. High-level
-environments such as \Matlab, R \cite{Rlang}, SciPy \cite{numpy},
-Octave \cite{Octave}, and SciLab \cite{scilab} provide greatly increased
-convenience and productivity. But at the same time, C and Fortran
-remain the gold standard languages for computationally intensive
-problems because high-level dynamic languages still lack sufficient
-performance. As a result, the most challenging areas of technical
-computing have benefited the least from the increased abstraction and
-productivity offered by higher level languages.
+execution for high-performance computing, programmers continue to prefer
+high-level dynamic languages for algorithm development and data analysis
+in applied math, engineering, and the sciences. High-level environments
+such as \Matlab\!, Octave~\cite{Octave}, R~\cite{Rlang},
+SciPy~\cite{numpy}, and SciLab~\cite{scilab} provide greatly increased
+convenience and productivity. However, C and Fortran remain the gold
+standard languages for computationally intensive problems because
+high-level dynamic languages still lack sufficient performance. As a
+result, the most challenging areas of technical computing have benefited
+the least from the increased abstraction and productivity offered by
+higher level languages.
 
 Two-tiered architectures have emerged as the standard compromise between
 convenience and performance: programmers express high-level logic in a
@@ -88,16 +88,18 @@ significant overhead and makes whole-program optimization difficult.
 Two-tiered systems also present a social barrier, preventing most users
 from understanding or contributing to their internals.
 
-There has been significant progress in improving the performance of
-dynamic languages. Projects like the Python compiler framework PyPy
-\cite{pypyjit} have been fairly successful. Similar efforts exist for
-languages from LISP onward. The common feature of all such projects is
-that they seek to add performance to an existing language. This is
-obviously useful, since existing code can benefit. But while promising,
-these efforts have yet to significantly decrease the need for the
-``two-tier'' approach in practice. Julia is designed for performance from
-the beginning, and we feel this seemingly-subtle difference turns out to
-be crucial.
+An alternative to the two-tier compromise is to enhance the performance of
+existing dynamic languages to match C and Fortran. There has been
+significant progress made along these lines. Projects like the Python
+compiler framework PyPy \cite{pypyjit} have been fairly successful.
+Similar efforts exist for languages from LISP onward. The common feature
+of all such projects is that they seek to add performance to an existing
+language. This is obviously useful, since existing code can benefit. While
+promising, these efforts have yet to significantly decrease the need for
+the two-tier approach in practice.
+
+Julia is designed for performance from the beginning, and we feel this
+seemingly-subtle difference turns out to be crucial.
 
 %In our design, the compiler machinery that provides performance
 %is also available for extra expressivity in programs.
