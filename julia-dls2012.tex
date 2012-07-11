@@ -61,30 +61,36 @@ Convenience is winning. Despite many advances in compiler technology and
 execution frameworks for high-performance computing, programmers continue
 to prefer high-level dynamic languages for algorithm development and data
 analysis in applied math, engineering, and the sciences. High-level
-dynamic environments such as \Matlab, R\cite{Rlang}, SciPy\cite{numpy},
+dynamic environments such as \Matlab, R \cite{Rlang}, SciPy \cite{numpy},
 Octave \cite{Octave}, and SciLab \cite{scilab} provide greatly increased
-convenience and productivity. Despite the tremendous productivity gains, C
-and Fortran remain the gold standard languages for the most essential
-parts of technical computing because high-level dynamic languages still
-lack sufficient performance. As a result, the most challenging areas of
+convenience and productivity. Despite these advantages, C and Fortran
+remain the gold standard languages for the most essential parts of
+technical computing because high-level dynamic languages still lack
+sufficient performance. As a result, the most challenging areas of
 technical computing have benefited the least from the increased
 abstraction and productivity offered by higher level languages.
 
-The resulting architecture is two-tiered: the programmer expresses
-high-level logic in a dynamic language while the heavy lifting is done in
-C and Fortran. The aforementioned dynamic technical computing environments
-are all instances of this design. While this approach is pragmatic for
-many applications, there are significant drawbacks. It would be preferable
-to also write compute-intensive code in a more productive language. This
-is especially true when developing parallel algorithms, where code
-complexity can increase dramatically. Programming in two languages can be
-more complex than using either language by itself due to the need for
-mediation between different type domains and incompatible memory
-management schemes. These interfacing issues may also add overhead when
-calling between layers. When such a system is used for mathematical
-programming there is pressure to write ``vectorized'' code, which is not
-natural for every problem. Lastly, from a compiler's point of view, these
-designs make it difficult to perform whole-program optimization.
+Two-tiered architectures have emerged as the standard compromise between
+convenience and performance: programmers express high-level logic in a
+dynamic language while the heavy lifting is done in C and Fortran. The
+aforementioned dynamic technical computing environments are all instances
+of this design. While this approach is pragmatic for many applications,
+there are significant drawbacks. It would, of course, be preferable to
+write compute-intensive code in a more productive language. This is
+especially true when developing parallel algorithms, where code complexity
+can increase dramatically. Programming in two languages can be more
+complex than using either language by itself due to the need for mediation
+between different type domains and incompatible memory management schemes.
+These interfacing issues may also add overhead when calling between
+layers. When such a system is used for mathematical programming there is
+pressure to write ``vectorized'' code, which is not natural for every
+problem. From a compiler's point of view, these designs make it difficult
+to perform whole-program optimization. Two-tiered systems also present a
+massive social barrier preventing the vast majority of users from
+understanding or contributing to their internals, since they are written
+in a different language hidden behind a complex API.
+% In the case of proprietary systems, the barrier to contribution is even
+% more extreme.
 
 There has been significant progress in improving the performance of
 dynamic languages. Projects like the Python compiler framework PyPy
