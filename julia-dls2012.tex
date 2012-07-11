@@ -123,17 +123,16 @@ paradigm: by expressing the behavior of functions using multiple dispatch,
 the programmer unwittingly provides the compiler with extensive type
 information.
 
-We validate our design by implementing Julia's standard library---
-which encompasses most of the core functionality of standard technical
-computing environments---in the languge itself. As a result, our library
-code is more generic and compact, and it is possible to inline library code
-into user code and vice-versa.
-New users are able to read the standard library code, and modify it,
-imitate it, or extend it for their own purposes.
-Julia was publicly announced in February 2012. Our goals and work so
-far seemed to strike a chord, as we have seen a significant community
-start to grow in the short time since then.
-
+We validate our design by implementing Julia's standard library, which
+encompasses most of the core functionality of standard technical computing
+environments, in Julia itself. As a result, our library code is more
+generic and compact, and it is possible to inline library code into user
+code and vice versa. Julia was announced as an open source project in
+February 2012. New users are easily able to read the standard library
+code, modify it, imitate it, and extend it for their own purposes. Our
+goals and work so far seem to have struck a chord --- a significant
+community has grown around Julia in the short time since the initial
+public announcement.
 
 % adding expressiveness. This, in turn, allows more
 % functionality to be implemented in libraries. Many of the key differences
