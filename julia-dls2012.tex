@@ -129,9 +129,9 @@ encompasses most of the core functionality of standard technical computing
 environments, in Julia itself. As a result, our library code is more
 generic and compact, and it is possible to inline library code into user
 code and vice versa. Julia was announced as an open source project in
-February 2012. New users are easily able to read the standard library
-code, modify it, imitate it, and extend it for their own purposes. Our
-goals and work so far seem to have struck a chord --- a significant
+February 2012. New users have been easily able to read the standard
+library code, modify it, imitate it, and extend it for their own purposes.
+Our goals and work so far seem to have struck a chord --- a significant
 community has grown around Julia in the short time since the initial
 public announcement.
 
@@ -1347,6 +1347,16 @@ make new type deductions relevant to the user's application.
 \begin{center}
 \includegraphics[width=6.5in]{perf}
 \end{center}
+\caption{
+Microbenchmark results (times relative to C++, log-scale). These
+measurements were carried out on a MacBook Pro with a 2.53GHz Intel Core 2
+Duo CPU and 8GB of 1066MHz DDR3 RAM. The following versions were used:
+Python 2.7.1, {\Matlab} R2011a, Octave 3.4, R 2.14.2, V8 3.6.6.11. The C++
+baseline was compiled by GCC 4.2.1, taking best timing from all
+optimization levels. Native implementations of array operations, matrix
+multiplication, sorting, are used where available.
+}
+\label{mbr}
 \end{figure*}
 
 For example, we might want to write functions that apply to two
@@ -1441,28 +1451,16 @@ library designer to decide which functions should be staged.
 To evaluate Julia's performance, we have compared its speed to that of six
 other languages: C++, Python, \Matlab, Octave, R, and JavaScript.
 Figure~\ref{mbr}
-\footnote{
-  These measurements were carried out on a MacBook Pro with a 2.53GHz
-  Intel Core 2 Duo CPU and 8GB of 1066MHz DDR3 RAM. The following
-  versions were used: Python 2.7.1, \Matlab R2011a,
-  Octave 3.4, R 2.14.2, V8 3.6.6.11.  The C++ baseline was compiled by
-  GCC 4.2.1, taking best timing from all optimization levels.
-  Native implementations of array operations, matrix
-  multiplication, sorting, are used where available.
-}
 shows timings for five scalar microbenchmarks, and two
-simple array benchmarks. All numbers are ratios relative to
+simple array benchmarks; the same data are presented in tabular format in Table~\ref{mbrtab}. All numbers are ratios relative to
 the time taken by C++. The first five tests do not
 reflect typical application performance in each environment; their only
 purpose is to compare the code generation and execution for basic language
 constructs, such as manipulating scalar quantities and referencing individual
 array elements.
 
-\begin{figure*}
-\caption{Microbenchmark results (times relative to C++)}
-\label{mbr}
+\begin{table*}[t]
 \begin{center}
-
 \begin{tabular}{|l|r|r|r|r|r|r|}\hline
 test & Julia & Python & \Matlab & Octave & R & JavaScript \\
 \hline \hline
@@ -1481,22 +1479,10 @@ rand\_mat\_stat & 3.37 & 39.34 & 11.64 & 54.54 &  22.07 & 8.12 \\
 rand\_mat\_mul  & 1.00 &  1.18 &  0.70 &  1.65 &   8.64 & 41.79 \\
 \hline
 \end{tabular}
-
-%% \vspace{0.5cm}
-
-%% \caption{Task-level benchmark results (times in seconds)}
-%% \begin{tabular}{|l|r|r|r|r|}\hline
-%% test              & Python run 1 & Python fastest & Julia run 1 & Julia fastest\\
-%% \hline \hline
-%% list and dispatch & 3.60         & 3.12           & 0.43        & 0.19 \\
-%% \hline
-%% CSV parse         & 0.06         & 0.06           & 0.49        & 0.17 \\
-%% \hline
-%% \end{tabular}
-
 \end{center}
-\end{figure*}
-
+\caption{Microbenchmark results (times relative to C++).}
+\label{mbrtab}
+\end{table*}
 
 \Matlab has a JIT compiler
 that works quite well in some cases, but is inconsistent, and
@@ -1664,7 +1650,6 @@ It has attracted 550 mailing list subscribers, 1500 github followers,
 has been implemented for emacs, vim, and textmate.
 Github recognizes Julia as the language of source files ending in
 {\tt .jl}, and can syntax highlight Julia code listings.
-We are currently \#79 in github's language popularity ranking.
 
 Several community projects are underway: two plotting packages,
 interfaces to arbitrary-precision arithmetic library GMP,
