@@ -9,6 +9,7 @@
 % authoryear    To obtain author/year citation style instead of numeric.
 
 \usepackage{amsmath}
+\usepackage{graphicx}
 \usepackage{algorithm}
 \usepackage{algorithmic}
 
@@ -1342,6 +1343,12 @@ first, optimized code can be generated for special cases, and
 second, the type inference system can effectively be extended to be able to
 make new type deductions relevant to the user's application.
 
+\begin{figure*}[t]
+\begin{center}
+\includegraphics[width=6.5in]{perf}
+\end{center}
+\end{figure*}
+
 For example, we might want to write functions that apply to two
 arrays of different dimensionality, where the result has the higher of the
 two argument dimensionalities. One such function is a ``broadcasting''
@@ -1429,13 +1436,10 @@ in libraries without losing performance. Of course, ordinary Julia
 functions may also have complex type behavior, and it is up to the
 library designer to decide which functions should be staged.
 
-
 \section{Evaluation}
 
-\subsection{Performance}
-
-We have compared the execution speed of Julia code to that of six other
-languages: C++, Python, \Matlab, Octave, R, and JavaScript.
+To evaluate Julia's performance, we have compared its speed to that of six
+other languages: C++, Python, \Matlab, Octave, R, and JavaScript.
 Figure~\ref{mbr}
 \footnote{
   These measurements were carried out on a MacBook Pro with a 2.53GHz
