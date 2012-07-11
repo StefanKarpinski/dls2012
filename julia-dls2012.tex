@@ -136,7 +136,33 @@ imitate it, or extend it for their own purposes.
 % TODO: summary of our results, e.g. community stuff, talk about this
 % being a practical, general language
 
-\section{Contributions}
+
+
+%designing for type inference gives us two things
+%- can design library with conscious tradeoffs
+%- avoid premature optimization
+
+% most original contributions:
+
+% - a dynamic approach to type and method parameters ("static" parameters) that makes them less obtrusive. You can omit type parameters, in which case we effectively automatically supply an appropriate ad-hoc abstract supertype.
+% - using dynamic multiple dispatch as the only means of code selection.
+% - type-based method specialization heuristics
+% - singleton kinds, giving the benefits of method static parameters, but with ordinary argument passing instead of different syntax
+% - feeding back inferred types into the language, as in comprehensions. it might be sketchy, and Gilad Bracha might not like it, but as far as I know it has never been done in a dynamic language before.
+
+% could be good intro material
+%% With type inference in mind from the beginning, unnecessary type complexity
+%% could be removed and a better overall system may result.
+%% Most importantly, the goal should not be just to make a dynamic language
+%% faster or safer, but to provide more power at the same time.
+%% When we go to great lengths to make dynamic
+%% languages perform well, we should ask what else we can get for the same
+%% level of effort. Julia answers this question by employing more
+%% sophisticated types and dispatch rules that would make the language even
+%% slower without our compiler.
+
+
+\section{Language Design}
 
 Julia's primary means of abstraction is dynamic multiple dispatch.
 Much of a language consists of mechanisms for selecting
@@ -171,31 +197,7 @@ We introduce some type-based heuristics for controlling method specialization.
 %design is in line with a general trend towards automation in compiler
 %and language design.
 
-%designing for type inference gives us two things
-%- can design library with conscious tradeoffs
-%- avoid premature optimization
-
-% most original contributions:
-
-% - a dynamic approach to type and method parameters ("static" parameters) that makes them less obtrusive. You can omit type parameters, in which case we effectively automatically supply an appropriate ad-hoc abstract supertype.
-% - using dynamic multiple dispatch as the only means of code selection.
-% - type-based method specialization heuristics
-% - singleton kinds, giving the benefits of method static parameters, but with ordinary argument passing instead of different syntax
-% - feeding back inferred types into the language, as in comprehensions. it might be sketchy, and Gilad Bracha might not like it, but as far as I know it has never been done in a dynamic language before.
-
-% could be good intro material
-%% With type inference in mind from the beginning, unnecessary type complexity
-%% could be removed and a better overall system may result.
-%% Most importantly, the goal should not be just to make a dynamic language
-%% faster or safer, but to provide more power at the same time.
-%% When we go to great lengths to make dynamic
-%% languages perform well, we should ask what else we can get for the same
-%% level of effort. Julia answers this question by employing more
-%% sophisticated types and dispatch rules that would make the language even
-%% slower without our compiler.
-
-
-\section{Language Design}
+\subsection{Rationale}
 
 In past work on optimizing dynamic languages, researchers have observed that
 programs are not as dynamic as their authors might think:
@@ -241,6 +243,8 @@ statically-unknown functions without interfering with optimizations done
 around such call sites. Statically-unknown function calls arise in
 many contexts, such as calling a function taken from an untyped data structure,
 or dynamically dispatching a method call due to unknown argument types.
+
+\subsection{Core Language Overview}
 
 The core Julia language contains the following components:
 
