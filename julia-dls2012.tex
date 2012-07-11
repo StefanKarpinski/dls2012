@@ -73,21 +73,20 @@ productivity offered by higher level languages.
 Two-tiered architectures have emerged as the standard compromise between
 convenience and performance: programmers express high-level logic in a
 dynamic language while the heavy lifting is done in C and Fortran. The
-aforementioned dynamic technical computing environments are all
-themselves instances
-of this design. While this approach is effective for some applications,
-there are drawbacks. It would be preferable to write compute-intensive
-code in a more productive language as well. This is particularly true when
-developing parallel algorithms, where code complexity can increase
-dramatically. Instead, there is pressure to write ``vectorized'' code,
-which is unnatural for many problems and might generate large temporary
-objects which could be avoided with explicit loops. Programming in
-two languages is more complex than using either language by itself due to
-the need for mediation between different type domains and
-memory management schemes. Interfacing between layers may add
-overhead and makes whole-program optimization difficult.
-Two-tiered systems also present a social barrier, preventing
-most users from understanding or contributing to their internals.
+aforementioned dynamic technical computing environments are all themselves
+instances of this design. While this approach is effective for some
+applications, there are drawbacks. It would be preferable to write
+compute-intensive code in a more productive language as well. This is
+particularly true when developing parallel algorithms, where code
+complexity can increase dramatically. Instead, there is pressure to write
+``vectorized'' code, which is unnatural for many problems and might
+generate large temporary objects which could be avoided with explicit
+loops. Programming in two languages is more complex than using either
+language by itself due to the need for mediation between different type
+domains and memory management schemes. Interfacing between layers may add
+significant overhead and makes whole-program optimization difficult.
+Two-tiered systems also present a social barrier, preventing most users
+from understanding or contributing to their internals.
 
 There has been significant progress in improving the performance of
 dynamic languages. Projects like the Python compiler framework PyPy
