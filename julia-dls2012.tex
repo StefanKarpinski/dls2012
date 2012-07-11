@@ -103,7 +103,7 @@ be crucial.
 %In our design, the compiler machinery that provides performance
 %is also available for extra expressivity in programs.
 
-{\it Built-in} performance means that the compiler's type machinery is
+Built-in performance means that the compiler's type machinery is
 also available within the language, adding expressiveness. This, in turn,
 allows more functionality to be implemented in libraries. Many of the key
 differences between languages used by different disciplines (e.g. R for
@@ -421,7 +421,7 @@ It is often useful to refer to parameters of argument types inside methods,
 and to specify constraints on those parameters for dispatch purposes.
 Method parameters address these needs. These parameters behave a bit like
 arguments, but they are always derived automatically from
-the argument types and not specified explicitly by the caller.
+method argument types and not specified explicitly by the caller.
 The following signature presents a typical example:
 
 \begin{verbatim}
@@ -551,7 +551,7 @@ according to the set of values it would ultimately encompass. For example,
 has been found useful in past work combining parametric types and multiple
 dispatch \cite{modularmultipledispatch}.
 
-Julia uses \emph{symmetric} multiple dispatch, which means all arguments
+Julia uses symmetric multiple dispatch, which means all arguments
 are equally important. Therefore, ambiguous signatures are possible.
 For example, given {\tt foo(x::Number, y::Int)} and
 {\tt foo(x::Int, y::Number)} it is not clear which method to call when both
@@ -757,7 +757,7 @@ important than the heuristics described above.
 Types of program expressions and variables are inferred by forward
 dataflow analysis\footnote{Adding a reverse dataflow pass could potentially
 improve type information, but we have not yet done this.}.
-The original algorithm for such {\it dynamic type inference} was given by
+The original algorithm for such dynamic type inference was given by
 Kaplan and Ullman \cite{kaplanullman}.
 This is different from type inference in the ML family of languages
 \cite{MLtypeinf}, where the compiler \emph{must} be able to determine
@@ -1453,17 +1453,17 @@ rand\_mat\_mul  & 1.00 &  1.18 &  0.70 &  1.65 &   8.64 & 41.79 \\
 \hline
 \end{tabular}
 
-\vspace{0.5cm}
+%% \vspace{0.5cm}
 
-\caption{Task-level benchmark results (times in seconds)}
-\begin{tabular}{|l|r|r|r|r|}\hline
-test              & Python run 1 & Python fastest & Julia run 1 & Julia fastest\\
-\hline \hline
-list and dispatch & 3.60         & 3.12           & 0.43        & 0.19 \\
-\hline
-CSV parse         & 0.06         & 0.06           & 0.49        & 0.17 \\
-\hline
-\end{tabular}
+%% \caption{Task-level benchmark results (times in seconds)}
+%% \begin{tabular}{|l|r|r|r|r|}\hline
+%% test              & Python run 1 & Python fastest & Julia run 1 & Julia fastest\\
+%% \hline \hline
+%% list and dispatch & 3.60         & 3.12           & 0.43        & 0.19 \\
+%% \hline
+%% CSV parse         & 0.06         & 0.06           & 0.49        & 0.17 \\
+%% \hline
+%% \end{tabular}
 
 \end{center}
 \end{figure*}
@@ -1491,23 +1491,6 @@ probably possible.
 JavaScript as typically deployed is not able to call the native BLAS code,
 but the V8 compiler's work is respectable here.
 
-Figure~\ref{mbr}\footnote{
-Linux kernel 3.2.8 PC with 3.2GHz Intel Core i5 CPU, 4GB of RAM.
-Python 2.7.2.} compares Julia and Python on some
-more realistic ``task level'' benchmarks. The first test defines two
-data types (classes in Python), then forms (by appending) a heterogeneous
-array containing one million instances of each type. Then a method is called
-on each object in the array. On the first run, Julia incurs some compilation
-overhead and is about 8x faster. On future runs it is up to 16x faster.
-Although the method calls cannot be optimized, Julia is still able to
-gain an advantage likely due to use of native arithmetic for looping.
-
-The second test reads each line of a 100000-line, 7MB CSV file, and
-identifies and separates the comma-delimited fields. Python uses mature
-C libraries for these tasks, and so is 3x to 8x faster than Julia. All of
-the Julia library code is written in Julia, but this of course is no help
-to an end user who only cares about application performance.
-
 Julia is not yet able to cache generated native code, and so incurs a
 startup time of about two seconds to compile basic library functions.
 For some applications this latency is a barrier to deployment, and we plan
@@ -1517,38 +1500,34 @@ to address it in the future.
 \subsection{Effectiveness of Specialization Heuristics}
 
 Given our implementation strategy, excessive compilation and corresponding
-memory use are potential performance concerns. In Figure~\ref{ncomp}
-we present the number of method compilations performed on startup, and
-after running a test suite. From the second row of the table to the bottom,
-each of three specialization heuristics is successively enabled to
-determine its effect on compiler workload. In the last table row, each
-method is compiled just once.
-
-The heuristics are able to elide about 12\% of compilations. This is
+memory use are potential performance concerns.
+We measured the number of method compilations performed both with and
+without our specialization heuristics, and
+the heuristics were able to elide about 12\% of compilations. This is
 not a large fraction, but it is satisfying given that the heuristics can
 be computed easily, and only by manipulating types. On average, each
 method is compiled about 2.5 times.
 
-\begin{figure}
-\caption{Number of methods compiled}
-\label{ncomp}
-\begin{center}
-\begin{tabular}{|l|r|r|}\hline
-    & at startup & after test suite \\
-\hline \hline
-no heuristics & 396 & 2245 \\
-\hline
-manual hints & 379 & 2160 \\
-\hline
-tuple widening & 357 & 1996 \\
-\hline
-vararg widening & 355 & 1970 \\
-\hline
-no specialization & 267 & 766 \\
-\hline
-\end{tabular}
-\end{center}
-\end{figure}
+%% \begin{figure}
+%% \caption{Number of methods compiled}
+%% \label{ncomp}
+%% \begin{center}
+%% \begin{tabular}{|l|r|r|}\hline
+%%     & at startup & after test suite \\
+%% \hline \hline
+%% no heuristics & 396 & 2245 \\
+%% \hline
+%% manual hints & 379 & 2160 \\
+%% \hline
+%% tuple widening & 357 & 1996 \\
+%% \hline
+%% vararg widening & 355 & 1970 \\
+%% \hline
+%% no specialization & 267 & 766 \\
+%% \hline
+%% \end{tabular}
+%% \end{center}
+%% \end{figure}
 
 Memory usage is not unreasonable for modern machines: on a 64-bit platform
 Julia uses about 50MB of memory on startup, and after loading several
