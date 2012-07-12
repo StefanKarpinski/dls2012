@@ -14,6 +14,9 @@
 \usepackage{graphicx}
 \usepackage{algorithm}
 \usepackage{algorithmic}
+\usepackage{natbib}
+\usepackage{microtype}
+%\pagestyle{plain}
 
 \newcommand{\Matlab}{MATLAB\textsuperscript{\tiny\textregistered}}
 
@@ -28,11 +31,10 @@
 %\preprintfooter{Julia}   % 'preprint' option specified.
 
 \title{Julia: A Fast Dynamic Language for Technical Computing}
-%\author{Jeff Bezanson\\MIT\\bezanson@mit.edu \and Stefan
-%Karpinski\\MIT\\stefan@karpinski.org \and Viral
-%B. Shah\\viral@mayin.org \and Alan
-%Edelman\\MIT\\edelman@math.mit.edu}
-\author{Jeff Bezanson\\MIT \and Stefan Karpinski\\MIT \and Viral B. Shah \and Alan Edelman\\MIT}
+\author{Jeff Bezanson\thanks{Email: {\tt bezanson@mit.edu}}\\MIT \and
+  Stefan Karpinski\thanks{Email: {\tt stefan@karpinski.org}}\\MIT \and
+  Viral B. Shah\thanks{Email: {\tt viral@mayin.org}} \and 
+  Alan Edelman\thanks{email: {\tt edelman@math.mit.edu}}\\MIT}
 
 %\authorinfo{Jeff Bezanson}{MIT}{bezanson@mit.edu}
 %\authorinfo{Stefan Karpinski}{MIT}{stefan@karpinski.org}
@@ -1352,7 +1354,7 @@ make new type deductions relevant to the user's application.
 
 \begin{figure*}[t]
 \begin{center}
-\includegraphics[width=6.5in]{perf}
+\includegraphics[width=6in]{perf}
 \end{center}
 \caption{
 Microbenchmark results (times relative to C++, log-scale). These
@@ -1686,7 +1688,7 @@ VMWare and Citigroup.
 
 % We recommend abbrvnat bibliography style.
 
-\bibliographystyle{acm}
+\bibliographystyle{abbrv}
 
 % The bibliography should be embedded for final submission.
 \begin{thebibliography}{29}
